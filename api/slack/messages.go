@@ -16,6 +16,8 @@ var (
 	AppName string
 
 	tokenID string
+
+	current *Host
 )
 
 type (
@@ -33,6 +35,7 @@ func Init(host Host) error {
 	SlackToken = slack.New(host.TokenID)
 	LogChannel = host.ChannelID
 	tokenID = host.TokenID
+	current = &host
 
 	return nil
 }
@@ -45,7 +48,7 @@ func Send(errmsg interface{}, errStr string) error {
 	params := slack.PostMessageParameters{}
 
 	chanID, _, err := SlackToken.PostMessage(LogChannel,
-		fmt.Sprintf("```error %v\n ====\n %v ```", errmsg, errStr),
+		fmt.Sprintf("```host=%v error %v\n ====\n %v ```", current.Hostname(), errmsg, errStr),
 		params)
 	if err != nil {
 		errMsg := fmt.Errorf("error sending to slack %v", err)
