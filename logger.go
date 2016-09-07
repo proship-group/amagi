@@ -2,15 +2,25 @@ package hokutoseiUtils
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
+
+	"github.com/Hokutosei/hokutoseiUtils/api/slack"
 )
 
 var (
 	logInterface = map[string]string{
 		"i": "INFO",
 		"e": "ERROR",
+		"f": "FATAL",
 	}
 )
+
+// Init initialize slack API
+func Init(host slack.Host) {
+	fmt.Println("initializing slack...")
+	slack.Init(host)
+}
 
 // Info print to stdout our message
 func Info(msg string) {
@@ -21,7 +31,33 @@ func Info(msg string) {
 // Error print to stdout
 func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
+
 	fmt.Println(str)
+}
+
+// Fatal fatal print to stdout
+func Fatal(msg string) {
+	str := errMsgFmt("f", msg)
+
+	go slack.Send("", str)
+	fmt.Println(str)
+}
+
+// ExceptionDump start watching stack trace
+func ExceptionDump() {
+	if e := recover(); e != nil {
+		DumpStack(e, debug.Stack())
+		panic(e)
+	}
+}
+
+// DumpStack dump stack trace
+func DumpStack(e interface{}, stack []byte) {
+
+	if err := slack.Send(e, string(stack)); err != nil {
+		fmt.Printf("cant send to slack %v\n", err)
+	}
+	fmt.Printf("[%v] crashing...\n", PrettyPrintTime(time.Now()))
 }
 
 // UTILS
@@ -39,4 +75,8 @@ func timeLoglevel(logLevelStr string) string {
 // PrettyPrintTime pretty print a time value to readable
 func PrettyPrintTime(timeVal time.Time) string {
 	return timeVal.Format("Mon Jan _2 15:04:05 2006")
+}
+
+func errMsgFmt(logLevel, msg string) string {
+	return fmt.Sprintf("%s %s", timeLoglevel(logLevel), msg)
 }
