@@ -1,4 +1,4 @@
-package hokutoseiUtils
+package amagi
 
 import (
 	"fmt"

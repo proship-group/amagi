@@ -1,11 +1,11 @@
-package hokutoseiUtils
+package amagi
 
 import (
 	"fmt"
 	"runtime/debug"
 	"time"
 
-	"github.com/Hokutosei/hokutoseiUtils/api/slack"
+	"github.com/b-eee/amagi/api/slack"
 )
 
 var (
