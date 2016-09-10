@@ -47,7 +47,7 @@ func CreateCredentials() (*messaging.Pubnub, error) {
 		return &messaging.Pubnub{}, err
 	}
 
-	pubnub := messaging.NewPubnub(credentials.PublishKey, credentials.SubscribeKey, credentials.SecretKey, "", false, "")
+	pubnub := messaging.NewPubnub(credentials.PublishKey, credentials.SubscribeKey, credentials.SecretKey, "", true, "")
 	return pubnub, nil
 }
 
