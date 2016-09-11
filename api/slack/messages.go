@@ -17,7 +17,8 @@ var (
 
 	tokenID string
 
-	current *Host
+	// CurrentHost current host configured
+	CurrentHost *Host
 )
 
 type (
@@ -27,6 +28,12 @@ type (
 		Env       string
 		TokenID   string
 		ChannelID string
+
+		PublishKey   string
+		SubscribeKey string
+		SecretKey    string
+		MicroAppName string
+		Color        string
 	}
 )
 
@@ -35,7 +42,11 @@ func Init(host Host) error {
 	SlackToken = slack.New(host.TokenID)
 	LogChannel = host.ChannelID
 	tokenID = host.TokenID
-	current = &host
+	CurrentHost = &host
+
+	if err := setHostColor(CurrentHost); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -48,7 +59,7 @@ func Send(errmsg interface{}, errStr string) error {
 	params := slack.PostMessageParameters{}
 
 	chanID, _, err := SlackToken.PostMessage(LogChannel,
-		fmt.Sprintf("```host=%v error %v\n ====\n %v ```", current.Hostname(), errmsg, errStr),
+		fmt.Sprintf("```host=%v error %v\n ====\n %v ```", CurrentHost.Hostname(), errmsg, errStr),
 		params)
 	if err != nil {
 		errMsg := fmt.Errorf("error sending to slack %v", err)
@@ -66,4 +77,24 @@ func validateCanSend() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GetCurrentConfiguredHost get current configured host
+func GetCurrentConfiguredHost() *Host {
+	return CurrentHost
+}
+
+// HostName return hostname
+func HostName() string {
+	if CurrentHost == nil {
+		return ""
+	}
+
+	return CurrentHost.Hostname()
+}
+
+// GetMicroAppName get micro service app name
+func GetMicroAppName() string {
+
+	return CurrentHost.MicroAppName
 }
