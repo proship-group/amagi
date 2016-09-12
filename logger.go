@@ -3,7 +3,6 @@ package amagi
 import (
 	"fmt"
 	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/b-eee/amagi/api/pubnub"
@@ -28,19 +27,10 @@ func Init(host slack.Host) {
 
 // Info print to stdout our message
 func Info(msg string) {
-	var wg sync.WaitGroup
-	wg.Add(1)
 	str := fmt.Sprintf("%s %s", timeLoglevel("i"), msg)
 	fmt.Println(str)
 
-	go func() {
-		channel := pubnub.ChanName([]string{"log", "stream"}...)
-		message := formatHostName(str, slack.GetMicroAppName(), slack.GetCurrentConfiguredHost())
-
-		// pubnub.Publish(channel, message, &wg)
-		pubnub.Publish(channel, message, &wg)
-	}()
-	wg.Wait()
+	go pubnub.Publish(str)
 }
 
 // Error print to stdout

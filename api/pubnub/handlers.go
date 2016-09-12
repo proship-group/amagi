@@ -7,7 +7,7 @@ import (
 )
 
 // handleResult handle result from publish action
-func handleResult(successChan, errorChan chan []byte, timeoutVal uint16, action string, wg *sync.WaitGroup) {
+func handleResult(successChan, errorChan chan []byte, timeoutVal uint16, action, channel string, wg *sync.WaitGroup) {
 	timeout := make(chan bool, 1)
 	go func() {
 		time.Sleep(time.Duration(timeoutVal) * time.Second)
@@ -24,20 +24,20 @@ func handleResult(successChan, errorChan chan []byte, timeoutVal uint16, action 
 				close(successChan)
 				close(errorChan)
 				wg.Done()
+				return
 			}
-			return
 		case failure, ok := <-errorChan:
 			if !ok {
-				wg.Done()
 				break
 			}
 			if string(failure) != "[]" {
-				fmt.Println(fmt.Sprintf("%s Error Callback: %s", action, failure))
+				fmt.Println(fmt.Sprintf("%s Error Callback: %s chan: %v", action, failure, channel))
+				wg.Done()
+				return
 			}
-			return
 		case <-timeout:
+			fmt.Println(fmt.Sprintf("%s Handler timeout after %d secs chan: %v", action, timeoutVal, channel))
 			wg.Done()
-			fmt.Println(fmt.Sprintf("%s Handler timeout after %d secs", action, timeoutVal))
 			return
 		}
 	}
