@@ -26,6 +26,10 @@ func SetHost() string {
 		host = strings.Join([]string{getCurrentIP()}, "_")
 	case "docker":
 		host = strings.Join([]string{dockerHostIP()}, "_")
+	case "stg":
+		host = strings.Join([]string{"stg"}, "_")
+	case "prod":
+		host = strings.Join([]string{"prod"}, "_")
 	default:
 		host = dockerHostIP()
 
