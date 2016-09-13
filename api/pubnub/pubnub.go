@@ -27,6 +27,7 @@ type (
 func SetPubNubConnection() {
 	pubNub, err := CreateCredentials()
 	if err != nil {
+		fmt.Printf("can't set pubnub %v\n", err)
 		PubNubConn = nil
 	}
 
@@ -52,17 +53,41 @@ func CreateCredentials() (*messaging.Pubnub, error) {
 }
 
 // Publish publish to channel
-func Publish(channel, message string, wg *sync.WaitGroup) error {
+func Publish(message string) error {
+	if cantPublish() {
+		return fmt.Errorf("can't publish")
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	publishSuccessChannel := make(chan []byte)
 	publishErrorChannel := make(chan []byte)
+
+	channel, message := buildMsgAndChan(message)
 
 	go PubNubConn.Publish(channel, message,
 		publishSuccessChannel, publishErrorChannel)
 
-	go handleResult(publishSuccessChannel, publishErrorChannel, messaging.GetNonSubscribeTimeout(), "publishing", wg)
+	go handleResult(publishSuccessChannel, publishErrorChannel, messaging.GetNonSubscribeTimeout(), "publishing", channel, &wg)
 
 	defer func() {
 		PubNubConn.CloseExistingConnection()
 	}()
+
+	wg.Wait()
 	return nil
+}
+
+func buildMsgAndChan(msg string) (string, string) {
+	channel := ChanName([]string{"log", "stream"}...)
+	message := formatHostName(msg, slack.GetMicroAppName(), slack.GetCurrentConfiguredHost())
+
+	// pubnub.Publish(channel, message, &wg)
+	return channel, message
+}
+
+func cantPublish() bool {
+	return slack.CurrentHost.PublishKey == "" &&
+		slack.CurrentHost.SubscribeKey == "" &&
+		slack.CurrentHost.SecretKey == ""
 }

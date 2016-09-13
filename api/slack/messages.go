@@ -44,10 +44,13 @@ func Init(host Host) error {
 	tokenID = host.TokenID
 	CurrentHost = &host
 
+	fmt.Printf("Slack token resp: %v\n", testSlackAuth())
+
 	if err := setHostColor(CurrentHost); err != nil {
 		return err
 	}
 
+	printHostConnections()
 	return nil
 }
 
@@ -97,4 +100,47 @@ func HostName() string {
 func GetMicroAppName() string {
 
 	return CurrentHost.MicroAppName
+}
+
+func testSlackAuth() bool {
+	resp, err := SlackToken.AuthTest()
+	if err != nil {
+		fmt.Printf("error Slack not auth! %v\n", err)
+		return false
+	}
+
+	fmt.Printf("slack AuthResponse: %v\n", resp)
+	return true
+}
+
+func printHostConnections() {
+	// Hostname  func() string
+	// Env       string
+	// TokenID   string
+	// ChannelID string
+
+	// PublishKey   string
+	// SubscribeKey string
+	// SecretKey    string
+	// MicroAppName string
+	// Color        string
+	fmt.Println("printHostConnections")
+	str := fmt.Sprintf(`
+		HostName: %v
+		Env: %v
+		ChannelID: %v
+
+		PublishKey: %v
+		SubscribeKey: %v
+		MicroAppName: %v
+		Color: %v
+
+	`, CurrentHost.Hostname(),
+		CurrentHost.Env,
+		CurrentHost.ChannelID,
+		CurrentHost.PublishKey,
+		CurrentHost.SubscribeKey,
+		CurrentHost.MicroAppName,
+		CurrentHost.Color)
+	fmt.Println(str)
 }

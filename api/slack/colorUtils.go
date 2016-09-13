@@ -1,7 +1,7 @@
 package slack
 
 import (
-	"fmt"
+	// "fmt"
 	"github.com/fatih/color"
 	"math/rand"
 	"time"
@@ -23,7 +23,6 @@ func setHostColor(host *Host) error {
 	rand.Seed(time.Now().Unix())
 	host.Color = colorList[rand.Intn(len(colorList))]
 
-	fmt.Println("color set for ", host.Hostname(), host.Color, "-------xxx")
 	return nil
 }
 
