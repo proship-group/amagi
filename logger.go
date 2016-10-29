@@ -7,6 +7,7 @@ import (
 
 	"github.com/b-eee/amagi/api/pubnub"
 	"github.com/b-eee/amagi/api/slack"
+	"github.com/getsentry/raven-go"
 )
 
 var (
@@ -19,7 +20,6 @@ var (
 
 // Init initialize slack API
 func Init(host slack.Host) {
-	fmt.Println("initializing slack...")
 	slack.Init(host)
 
 	pubnub.SetPubNubConnection()
@@ -38,6 +38,8 @@ func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
 
 	fmt.Println(str)
+	raven.CaptureError(fmt.Errorf(msg), nil)
+	go pubnub.Publish(str)
 }
 
 // Fatal fatal print to stdout
@@ -45,6 +47,7 @@ func Fatal(msg string) {
 	str := errMsgFmt("f", msg)
 
 	go slack.Send("", str)
+	go pubnub.Publish(str)
 	fmt.Println(str)
 }
 
