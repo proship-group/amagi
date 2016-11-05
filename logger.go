@@ -7,6 +7,7 @@ import (
 
 	"github.com/b-eee/amagi/api/pubnub"
 	"github.com/b-eee/amagi/api/slack"
+	"github.com/getsentry/raven-go"
 )
 
 var (
@@ -37,6 +38,7 @@ func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
 
 	fmt.Println(str)
+	raven.CaptureError(fmt.Errorf(msg), nil)
 	go pubnub.Publish(str)
 }
 
