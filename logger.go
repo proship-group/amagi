@@ -8,11 +8,13 @@ import (
 	"github.com/b-eee/amagi/api/pubnub"
 	"github.com/b-eee/amagi/api/slack"
 	"github.com/getsentry/raven-go"
+	"github.com/k0kubun/pp"
 )
 
 var (
 	logInterface = map[string]string{
 		"i": "INFO",
+		"w": "WARN",
 		"e": "ERROR",
 		"f": "FATAL",
 	}
@@ -33,6 +35,14 @@ func Info(msg string) {
 	go pubnub.Publish(str)
 }
 
+// Warn print to stdout
+func Warn(msg string) {
+	str := fmt.Sprintf("%s %s", timeLoglevel("w"), msg)
+
+	fmt.Println(str)
+	go pubnub.Publish(str)
+}
+
 // Error print to stdout
 func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
@@ -49,6 +59,14 @@ func Fatal(msg string) {
 	go slack.Send("", str)
 	go pubnub.Publish(str)
 	fmt.Println(str)
+}
+
+// Pretty Printer for DEBUG
+func Pretty(obj interface{}, msg string) {
+	str := fmt.Sprintf("--- %s ---",  msg)
+
+	fmt.Println(str)
+	pp.Println(obj)
 }
 
 // ExceptionDump start watching stack trace
