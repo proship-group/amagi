@@ -5,8 +5,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/b-eee/amagi/api/pubnub"
-	"github.com/b-eee/amagi/api/slack"
+	"amagi/api/pubnub"
+	"amagi/api/slack"
 )
 
 var (

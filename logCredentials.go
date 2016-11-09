@@ -6,8 +6,9 @@ import (
 	"log"
 	"os"
 	// "github.com/b-eee/amagi"
-	"github.com/b-eee/amagi/api/pubnub"
-	"github.com/b-eee/amagi/api/slack"
+	"amagi/api/pubnub"
+	"amagi/api/slack"
+
 	"github.com/joho/godotenv"
 )
 

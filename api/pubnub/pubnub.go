@@ -2,11 +2,11 @@ package pubnub
 
 import (
 	"fmt"
-	"github.com/pubnub/go/messaging"
 	"sync"
 
-	// utils "github.com/b-eee/amagi"
-	"github.com/b-eee/amagi/api/slack"
+	"github.com/pubnub/go/messaging"
+
+	"amagi/api/slack"
 )
 
 var (

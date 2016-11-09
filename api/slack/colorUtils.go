@@ -1,10 +1,10 @@
 package slack
 
 import (
-	// "fmt"
-	"github.com/fatih/color"
 	"math/rand"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 var (

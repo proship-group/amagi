@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/b-eee/amagi/api/slack"
+	"amagi/api/slack"
 )
 
 // ChanName channel name constructor
