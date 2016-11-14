@@ -39,7 +39,7 @@ func InitLogCredentials() slack.Host {
 func initializeConfigEnv() error {
 	file := fmt.Sprintf("%v/%v", getCwd(), configEnvFileName)
 	if err := godotenv.Load(file); err != nil {
-		log.Printf("ERROR LOADING DOTENV %v", err)
+		log.Printf("ERROR LOADING DOTENV %v at path %v", err, file)
 	}
 
 	fmt.Println("config.env initialize!")
