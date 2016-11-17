@@ -7,7 +7,8 @@ import (
 
 	"github.com/b-eee/amagi/api/pubnub"
 	"github.com/b-eee/amagi/api/slack"
-	"github.com/getsentry/raven-go"
+	"github.com/b-eee/amagi/services/sentry"
+
 	"github.com/k0kubun/pp"
 )
 
@@ -48,7 +49,7 @@ func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
 
 	fmt.Println(str)
-	raven.CaptureError(fmt.Errorf(msg), nil)
+	sentry.SendToSentry(msg)
 	go pubnub.Publish(str)
 }
 
@@ -58,12 +59,14 @@ func Fatal(msg string) {
 
 	go slack.Send("", str)
 	go pubnub.Publish(str)
+
+	sentry.SendToSentry(msg)
 	fmt.Println(str)
 }
 
 // Pretty Printer for DEBUG
 func Pretty(obj interface{}, msg string) {
-	str := fmt.Sprintf("--- %s ---",  msg)
+	str := fmt.Sprintf("--- %s ---", msg)
 
 	fmt.Println(str)
 	pp.Println(obj)
@@ -83,6 +86,8 @@ func DumpStack(e interface{}, stack []byte) {
 	if err := slack.Send(e, string(stack)); err != nil {
 		fmt.Printf("cant send to slack %v\n", err)
 	}
+
+	sentry.SendToSentry(string(stack))
 	fmt.Printf("[%v] crashing...\n", PrettyPrintTime(time.Now()))
 }
 
