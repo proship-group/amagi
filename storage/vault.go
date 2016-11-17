@@ -60,11 +60,8 @@ func SplitRedisKey(backend, key string) []string {
 }
 
 // VWrite vault write
-func VWrite(path string, data request) error {
+func VWrite(path string, data map[string]interface{}) error {
 	s := time.Now()
-	// for k, v := range data {
-	// 	fmt.Println("k", k, "v", v, "===============")
-	// }
 
 	if _, err := LogicalClient().Write(path, data); err != nil {
 		utils.Error(fmt.Sprintf("error VWrite %v", err))
@@ -83,15 +80,6 @@ func VRead(paths ...string) (*vault.Secret, error) {
 	if err != nil {
 		utils.Error(fmt.Sprintf("error on VRead %v", err))
 		return secret, err
-	}
-
-	for k := range secret.Data {
-		v, err := LogicalClient().Unwrap(secret.Data[k].(string))
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		fmt.Println(v, "===xx")
 	}
 
 	utils.Info(fmt.Sprintf("VRead took: %v path=%v", time.Since(s), path))

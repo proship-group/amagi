@@ -1,0 +1,95 @@
+package externalSvc
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
+	utils "github.com/b-eee/amagi"
+)
+
+// GenericHTTPRequester common HTTP requester utils
+// TODO DEPRECATE THIS, USE BELOW INSTEAD JP
+func GenericHTTPRequester(method, scheme, host, url string, data interface{}) (string, error) {
+	s := time.Now()
+	hostURL := fmt.Sprintf("%v://%v%v", scheme, host, url)
+	mJSON, _ := json.Marshal(data)
+	contentReader := bytes.NewReader(mJSON)
+
+	req, _ := http.NewRequest(method, hostURL, contentReader)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode == 404 {
+		utils.Error(fmt.Sprintf("error Creating post to MS %v status: %v", err, resp))
+		if resp != nil {
+			return resp.Status, err
+		}
+		return "500", err
+	}
+
+	defer resp.Body.Close()
+
+	utils.Info(fmt.Sprintf("GenericHTTPRequester took: %v to: %v", time.Since(s), hostURL))
+	return resp.Status, nil
+}
+
+// GenericHTTPRequesterWResp generic http requester w/ response return
+func GenericHTTPRequesterWResp(method, scheme, host, url string, data interface{}, responseData interface{}) error {
+	s := time.Now()
+	hostURL := fmt.Sprintf("%v://%v%v", scheme, host, url)
+	mJSON, _ := json.Marshal(data)
+	contentReader := bytes.NewReader(mJSON)
+
+	req, _ := http.NewRequest(method, hostURL, contentReader)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode == 404 {
+		utils.Error(fmt.Sprintf("error Creating post to MS %v status: %v", err, resp))
+		return err
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+		utils.Error(fmt.Sprintf("error GenericHTTPRequesterWResp decode %v", err))
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	utils.Info(fmt.Sprintf("GenericHTTPRequester took: %v to: %v", time.Since(s), hostURL))
+	return nil
+}
+
+// HTTPGetRequest HTTP get Request generic function
+func HTTPGetRequest(url string, values url.Values) (*http.Response, error) {
+
+	reqURL := fmt.Sprintf("%v?%v", url, values.Encode())
+	resp, err := http.Get(reqURL)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error HTTPGetRequest %v", err))
+		return resp, err
+	}
+	return resp, nil
+}
+
+// HTTPGetRequestWResponse http generic GETTER with response encoder
+func HTTPGetRequestWResponse(url string, values url.Values, result interface{}) error {
+	res, err := HTTPGetRequest(url, values)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse"))
+		return err
+	}
+	defer res.Body.Close()
+
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		panic(err)
+	}
+
+	return nil
+}
