@@ -68,7 +68,8 @@ func Publish(message string) error {
 	go PubNubConn.Publish(channel, message,
 		publishSuccessChannel, publishErrorChannel)
 
-	go handleResult(publishSuccessChannel, publishErrorChannel, messaging.GetNonSubscribeTimeout(), "publishing", channel, &wg)
+	// DISABLED FOR THE MEANTIME --JP
+	// go handleResult(publishSuccessChannel, publishErrorChannel, messaging.GetNonSubscribeTimeout(), "publishing -->>", channel, &wg)
 
 	defer func() {
 		PubNubConn.CloseExistingConnection()
