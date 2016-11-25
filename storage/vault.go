@@ -37,7 +37,7 @@ func StartVault() error {
 
 	VaultClient = client
 
-	fmt.Println("StartVault connected!")
+	fmt.Println("StartVault connected! ", config.Address)
 	return nil
 }
 
@@ -63,7 +63,7 @@ func SplitRedisKey(backend, key string) []string {
 func VWrite(path string, data map[string]interface{}) error {
 	s := time.Now()
 
-	if _, err := LogicalClient().Write(path, data); err != nil {
+	if _, err := VaultClient.Logical().Write(path, data); err != nil {
 		utils.Error(fmt.Sprintf("error VWrite %v", err))
 		return err
 	}
@@ -84,4 +84,17 @@ func VRead(paths ...string) (*vault.Secret, error) {
 
 	utils.Info(fmt.Sprintf("VRead took: %v path=%v", time.Since(s), path))
 	return secret, nil
+}
+
+// VDelete delete path
+func VDelete(paths ...string) error {
+	s := time.Now()
+	path := PathName(paths...)
+	if _, err := LogicalClient().Delete(path); err != nil {
+		utils.Error(fmt.Sprintf("error VDelete %v", err))
+		return err
+	}
+
+	utils.Info(fmt.Sprintf("VDelete took: %v path=%v", time.Since(s), path))
+	return nil
 }

@@ -53,13 +53,18 @@ func CreateCredentials() (*messaging.Pubnub, error) {
 }
 
 // Publish publish to channel
-func Publish(message string) error {
-	if cantPublish() {
+func Publish(message string, waitGroup *sync.WaitGroup) error {
+	defer waitGroup.Done()
+
+	// DISABLE PUBLISH FOR THE MEANTIME -JP
+	if !cantPublish() {
 		return fmt.Errorf("can't publish")
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	defer wg.Done()
+
 	publishSuccessChannel := make(chan []byte)
 	publishErrorChannel := make(chan []byte)
 
