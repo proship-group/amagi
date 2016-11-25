@@ -3,6 +3,7 @@ package amagi
 import (
 	"fmt"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/b-eee/amagi/api/pubnub"
@@ -33,7 +34,9 @@ func Info(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("i"), msg)
 	fmt.Println(str)
 
-	go pubnub.Publish(str)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pubnub.Publish(str, &wg)
 }
 
 // Warn print to stdout
@@ -41,7 +44,9 @@ func Warn(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("w"), msg)
 
 	fmt.Println(str)
-	go pubnub.Publish(str)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pubnub.Publish(str, &wg)
 }
 
 // Error print to stdout
@@ -50,7 +55,9 @@ func Error(msg string) {
 
 	fmt.Println(str)
 	sentry.SendToSentry(msg)
-	go pubnub.Publish(str)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pubnub.Publish(str, &wg)
 }
 
 // Fatal fatal print to stdout
@@ -58,7 +65,9 @@ func Fatal(msg string) {
 	str := errMsgFmt("f", msg)
 
 	go slack.Send("", str)
-	go pubnub.Publish(str)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pubnub.Publish(str, &wg)
 
 	sentry.SendToSentry(msg)
 	fmt.Println(str)
