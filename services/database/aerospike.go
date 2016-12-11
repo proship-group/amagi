@@ -88,6 +88,17 @@ func ASCreateKey(asQuery ASQuery) (*as.Key, error) {
 	return key, nil
 }
 
+// ASReadRecordBins aerospike read record with bins
+func ASReadRecordBins(asQuery ASQuery, target *as.Record) error {
+	record, err := ASClient.Get(nil, asQuery.ASKey, asQuery.Bins...)
+	if err != nil {
+		return err
+	}
+
+	(*target) = *record
+	return nil
+}
+
 // GetASClient get aerospike client
 func GetASClient() (*as.Client, time.Time) {
 	return ASClient, time.Now()
