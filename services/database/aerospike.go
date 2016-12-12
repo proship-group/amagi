@@ -1,11 +1,14 @@
 package database
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	as "github.com/aerospike/aerospike-client-go"
+	al "github.com/aerospike/aerospike-client-go/logger"
 	utils "github.com/b-eee/amagi"
 )
 
@@ -35,6 +38,11 @@ func StartAerospike() error {
 		utils.Error(fmt.Sprintf("error StartAerospike %v", err))
 		return err
 	}
+
+	var buf bytes.Buffer
+	lgr := log.New(&buf, "logger: ", log.Lshortfile)
+	al.Logger.SetLogger(lgr)
+	al.Logger.SetLevel(al.DEBUG)
 
 	ASClient = client
 	utils.Info(fmt.Sprintf("aerospike connected to %v", asHost))
@@ -73,8 +81,7 @@ func ASReadKey(asQuery ASQuery) error {
 		return err
 	}
 
-	fmt.Println(record)
-
+	_ = record
 	return nil
 }
 
@@ -96,6 +103,16 @@ func ASReadRecordBins(asQuery ASQuery, target *as.Record) error {
 	}
 
 	(*target) = *record
+	return nil
+}
+
+// ASReadObject aerospike read object
+func ASReadObject(asQuery ASQuery, target interface{}) error {
+	if err := ASClient.GetObject(nil, asQuery.ASKey, &target); err != nil {
+		utils.Error(fmt.Sprintf("error ASReadObject %v", err))
+		return err
+	}
+
 	return nil
 }
 
