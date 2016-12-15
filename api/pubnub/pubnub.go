@@ -2,8 +2,9 @@ package pubnub
 
 import (
 	"fmt"
-	"github.com/pubnub/go/messaging"
 	"sync"
+
+	"github.com/pubnub/go/messaging"
 
 	// utils "github.com/b-eee/amagi"
 	"github.com/b-eee/amagi/api/slack"
@@ -93,7 +94,11 @@ func buildMsgAndChan(msg string) (string, string) {
 }
 
 func cantPublish() bool {
-	return slack.CurrentHost.PublishKey == "" &&
+	if slack.CurrentHost == nil {
+		return false
+	}
+
+	return slack.CurrentHost == nil && slack.CurrentHost.PublishKey == "" &&
 		slack.CurrentHost.SubscribeKey == "" &&
 		slack.CurrentHost.SecretKey == ""
 }
