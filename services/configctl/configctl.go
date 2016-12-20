@@ -126,3 +126,20 @@ func GetDBConfigSettings(dbName string) Environment {
 
 	return result
 }
+
+// GetDBCfgStngWEnvName get DBconfig settings with environment name
+func GetDBCfgStngWEnvName(dbName, envName string) Environment {
+	var result Environment
+	configCtlURL := fmt.Sprintf("%v/db/get/%v/%v", ConfCtLHost(), dbName, envName)
+	res, err := externalSvc.HTTPGetRequest(configCtlURL, url.Values{})
+	if err != nil || res.StatusCode == 404 || res.StatusCode == 500 {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		panic(err)
+	}
+
+	return result
+}
