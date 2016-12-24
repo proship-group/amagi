@@ -40,7 +40,7 @@ func (s *googleStorage) Save(r io.Reader, bucketName, objectName string) (file *
 	aclObject = append(aclObject, &storage.ObjectAccessControl{
 		Bucket: bucketName,
 		Role:   "OWNER",
-		Entity: "allUsers",
+		Entity: "allAuthenticatedUsers",
 		Object: objectName})
 	storeData := &storage.Object{Name: objectName, Acl: aclObject}
 
@@ -52,9 +52,11 @@ func (s *googleStorage) Save(r io.Reader, bucketName, objectName string) (file *
 
 	uri := fmt.Sprintf("%s/%s/%s", storageRootURI, bucketName, objectName)
 	file = &CloudStorageFile{
-		FilePath: res.Name,
-		URI:      uri,
-		Size:     res.Size,
+		FilePath:  res.Name,
+		SelfLink:  res.SelfLink,
+		MediaLink: res.MediaLink,
+		URI:       uri,
+		Size:      res.Size,
 	}
 
 	return
@@ -68,7 +70,7 @@ func jwtConfigFromJSON() *http.Client {
 		utils.Fatal(fmt.Sprintf("error jwtConfigFromJSON %v path:%v", err, jwtConfigFilePath))
 		panic(err)
 	}
-	conf, err := google.JWTConfigFromJSON(data, "https://www.googleapis.com/auth/devstorage.full_control")
+	conf, err := google.JWTConfigFromJSON(data, storage.DevstorageFullControlScope)
 	if err != nil {
 		utils.Fatal(fmt.Sprintf("error jwtConfigFromJSON in google.JWTConfigFromJSON %v", err))
 		panic(err)

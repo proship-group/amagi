@@ -75,10 +75,10 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 	mongodbHosts := splitMongodbInstances(hosts)
 	ensureMaxWrite = len(mongodbHosts)
 	conn := mongodb.DialInfo{
-		Addrs:   mongodbHosts,
-		Timeout: 10 * time.Second,
-		Source:  "admin",
-		// Database: "admin",
+		Addrs:    mongodbHosts,
+		Timeout:  10 * time.Second,
+		Source:   "admin",
+		Database: cfe.Database,
 		Username: cfe.Username,
 		Password: cfe.Password,
 
@@ -89,6 +89,7 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		conn.Addrs = []string{os.Getenv("HOST")}
 	}
 
+	fmt.Println(conn, "==============")
 	// if os.Getenv("SECURE") == "true" {
 	// 	conn.Username = cfe.Username
 	// 	conn.Password = cfe.Password

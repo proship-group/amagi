@@ -13,6 +13,8 @@ type CloudStorage interface {
 // CloudStorageFile file in CloudStorageFile
 type CloudStorageFile struct {
 	FilePath string
+	SelfLink string
+	MediaLink string
 	URI      string
 	Size     uint64
 }
