@@ -42,10 +42,18 @@ func SetAndInitBackend() MSGBackendConfig {
 
 // ConnectToMsgBackend connect to msg backend by settings config
 func ConnectToMsgBackend(confg MSGBackendConfig) error {
+	if (MSGBackendConfig{}) == confg {
+		return fmt.Errorf("MSGBackendConfig not set")
+	}
+
 	connectionObj := connectionObjLauncher{
 		"nsq": StartNSQ,
 	}
 
-	utils.Info(fmt.Sprintf("connecting to host=%v backend=%v", confg.Env.Host, confg.Backend))
+	utils.Info(fmt.Sprintf(`connecting to
+							host=%v
+							backend=%v`,
+		confg.Env.Host, confg.Backend))
+
 	return connectionObj[confg.Backend](confg)
 }

@@ -15,6 +15,9 @@ var (
 func InitMessaging() error {
 	confBackend := backend.SetAndInitBackend()
 
-	backend.ConnectToMsgBackend(confBackend)
+	if err := backend.ConnectToMsgBackend(confBackend); err != nil {
+		return err
+	}
+
 	return nil
 }
