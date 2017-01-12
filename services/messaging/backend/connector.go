@@ -15,6 +15,9 @@ var (
 
 	// MessagingBackendENV  messaging backend select
 	MessagingBackendENV = "MESSAGING_BACKEND"
+
+	// CurrentMSGBackendConfig current messaging backend config
+	CurrentMSGBackendConfig MSGBackendConfig
 )
 
 type (
@@ -22,6 +25,12 @@ type (
 	MSGBackendConfig struct {
 		Env     configctl.Environment
 		Backend string
+	}
+
+	// MSGBackendSubscReq messaging backend subscribe request
+	MSGBackendSubscReq struct {
+		Topic   string
+		Channel string
 	}
 
 	connectionObjLauncher map[string]func(MSGBackendConfig) error
@@ -37,7 +46,19 @@ func SetAndInitBackend() MSGBackendConfig {
 		msgConfig.Env = configctl.GetDBCfgStngWEnvName("nsq", os.Getenv("ENV"))
 	}
 
-	return msgConfig
+	return SetMSGBackendConfig(msgConfig)
+}
+
+// SetMSGBackendConfig set current MSGBackendConfig and return CurrentMSGBackendConfig
+func SetMSGBackendConfig(backendConf MSGBackendConfig) MSGBackendConfig {
+	CurrentMSGBackendConfig = backendConf
+
+	return CurrentMSGBackendConfig
+}
+
+// GetMSGBackendConfig get current MSGBackendConfig
+func GetMSGBackendConfig() MSGBackendConfig {
+	return CurrentMSGBackendConfig
 }
 
 // ConnectToMsgBackend connect to msg backend by settings config
@@ -56,4 +77,22 @@ func ConnectToMsgBackend(confg MSGBackendConfig) error {
 		confg.Env.Host, confg.Backend))
 
 	return connectionObj[confg.Backend](confg)
+}
+
+// SubscribeToBackend subscribe to messaging backend
+func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
+	switch confg.Backend {
+	case "nsq":
+		fmt.Println("nsq")
+		nsqReq := NSQConsumerReq{
+			Topic:   req.Topic,
+			Channel: req.Channel,
+		}
+
+		if err := NSQCreateConsumer(confg, nsqReq); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
