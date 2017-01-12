@@ -33,6 +33,12 @@ type (
 		Channel string
 	}
 
+	// MSGBackendPubReq messaging backend subscribe request
+	MSGBackendPubReq struct {
+		Topic string
+		Body  []byte
+	}
+
 	connectionObjLauncher map[string]func(MSGBackendConfig) error
 )
 
@@ -90,6 +96,24 @@ func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 		}
 
 		if err := NSQCreateConsumer(confg, nsqReq); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// PublishToBackend publish to messaging backend
+func PublishToBackend(confg MSGBackendConfig, req MSGBackendPubReq) error {
+	switch confg.Backend {
+	case "nsq":
+		fmt.Println("nsq")
+		nsqReq := NSQPubReq{
+			Topic: req.Topic,
+			Body:  req.Body,
+		}
+
+		if err := NSQPublish(nsqReq); err != nil {
 			return err
 		}
 	}

@@ -148,7 +148,7 @@ func TestConnSeq() error {
 	for x := 0; x < 10; x++ {
 		time.Sleep(time.Duration(2) * time.Second)
 
-		chanName := fmt.Sprintf("testing")
+		chanName := fmt.Sprintf("userTimeline")
 		msg := []byte(fmt.Sprintf("message_%v", x))
 
 		req := NSQPubReq{
