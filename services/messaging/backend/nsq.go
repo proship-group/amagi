@@ -37,6 +37,7 @@ func StartNSQ(conf MSGBackendConfig) error {
 	s := time.Now()
 	config := nsq.NewConfig()
 	config.MaxInFlight = 1000000
+	config.OutputBufferSize = 0
 
 	if err := NSQCreateProducer(conf, NSQSetConfigConn(config)); err != nil {
 		return err
@@ -168,13 +169,13 @@ func TestConnSeq() error {
 func NSQPublish(req NSQPubReq) error {
 	e := time.Now()
 
-	producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
+	// producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
 
-	if err := producer.PublishAsync(req.Topic, req.Body, nil); err != nil {
+	if err := NSQProducer.DeferredPublish(req.Topic, time.Duration(1)*time.Microsecond, req.Body); err != nil {
 		utils.Error(fmt.Sprintf("error NSQPublish Publish %v", err))
 		return err
 	}
-	defer producer.Stop()
+	// defer producer.Stop()
 
 	utils.Info(fmt.Sprintf("test publish took: %v topic=%v", time.Since(e), req.Topic))
 	return nil

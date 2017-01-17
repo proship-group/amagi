@@ -107,7 +107,6 @@ func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 func PublishToBackend(confg MSGBackendConfig, req MSGBackendPubReq) error {
 	switch confg.Backend {
 	case "nsq":
-		fmt.Println("nsq")
 		nsqReq := NSQPubReq{
 			Topic: req.Topic,
 			Body:  req.Body,
