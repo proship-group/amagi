@@ -7,6 +7,7 @@ import (
 
 	"github.com/bitly/go-nsq"
 
+	"encoding/json"
 	utils "github.com/b-eee/amagi"
 )
 
@@ -36,8 +37,9 @@ type (
 func StartNSQ(conf MSGBackendConfig) error {
 	s := time.Now()
 	config := nsq.NewConfig()
-	config.MaxInFlight = 1000000
-	config.OutputBufferSize = 0
+	// config.MaxInFlight = 2
+	// config.OutputBufferSize = 0
+	// config.OutputBufferTimeout = time.Duration(2) * time.Millisecond
 
 	if err := NSQCreateProducer(conf, NSQSetConfigConn(config)); err != nil {
 		return err
@@ -146,11 +148,17 @@ func TestConn() error {
 
 // TestConnSeq test publish conn sequentially
 func TestConnSeq() error {
-	for x := 0; x < 10; x++ {
+	for x := 0; x < 100; x++ {
 		time.Sleep(time.Duration(2) * time.Second)
 
-		chanName := fmt.Sprintf("userTimeline")
-		msg := []byte(fmt.Sprintf("message_%v", x))
+		chanName := fmt.Sprintf("dt_import_progress_587e3ff0b6daf684ef75df87")
+		m := map[string]interface{}{
+			"body": map[string]interface{}{
+				"progress": x,
+			},
+		}
+		msg, _ := json.Marshal(m)
+		// msg := []byte(fmt.Sprintf("message_%v", x))
 
 		req := NSQPubReq{
 			Topic: chanName,
@@ -169,13 +177,13 @@ func TestConnSeq() error {
 func NSQPublish(req NSQPubReq) error {
 	e := time.Now()
 
-	// producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
+	producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
 
-	if err := NSQProducer.DeferredPublish(req.Topic, time.Duration(1)*time.Microsecond, req.Body); err != nil {
+	if err := producer.Publish(req.Topic, req.Body); err != nil {
 		utils.Error(fmt.Sprintf("error NSQPublish Publish %v", err))
 		return err
 	}
-	// defer producer.Stop()
+	defer producer.Stop()
 
 	utils.Info(fmt.Sprintf("test publish took: %v topic=%v", time.Since(e), req.Topic))
 	return nil

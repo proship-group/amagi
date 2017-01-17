@@ -88,8 +88,8 @@ func ConnectToMsgBackend(confg MSGBackendConfig) error {
 // SubscribeToBackend subscribe to messaging backend
 func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 	switch confg.Backend {
-	case "nsq":
-		fmt.Println("nsq")
+	// case "nsq":
+	default:
 		nsqReq := NSQConsumerReq{
 			Topic:   req.Topic,
 			Channel: req.Channel,
