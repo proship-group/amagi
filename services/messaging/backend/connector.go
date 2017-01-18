@@ -50,6 +50,9 @@ func SetAndInitBackend() MSGBackendConfig {
 	case "nsq":
 		msgConfig.Backend = "nsq"
 		msgConfig.Env = configctl.GetDBCfgStngWEnvName("nsq", os.Getenv("ENV"))
+	case "nats":
+		msgConfig.Backend = "nats"
+		msgConfig.Env = configctl.GetDBCfgStngWEnvName("nats", os.Getenv("ENV"))
 	}
 
 	return SetMSGBackendConfig(msgConfig)
@@ -74,7 +77,8 @@ func ConnectToMsgBackend(confg MSGBackendConfig) error {
 	}
 
 	connectionObj := connectionObjLauncher{
-		"nsq": StartNSQ,
+		"nsq":  StartNSQ,
+		"nats": StartNATS,
 	}
 
 	utils.Info(fmt.Sprintf(`connecting to
@@ -88,8 +92,7 @@ func ConnectToMsgBackend(confg MSGBackendConfig) error {
 // SubscribeToBackend subscribe to messaging backend
 func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 	switch confg.Backend {
-	// case "nsq":
-	default:
+	case "nsq":
 		nsqReq := NSQConsumerReq{
 			Topic:   req.Topic,
 			Channel: req.Channel,
@@ -98,6 +101,7 @@ func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 		if err := NSQCreateConsumer(confg, nsqReq); err != nil {
 			return err
 		}
+	case "nats":
 	}
 
 	return nil
@@ -105,14 +109,18 @@ func SubscribeToBackend(confg MSGBackendConfig, req MSGBackendSubscReq) error {
 
 // PublishToBackend publish to messaging backend
 func PublishToBackend(confg MSGBackendConfig, req MSGBackendPubReq) error {
+	nsqReq := NSQPubReq{
+		Topic: req.Topic,
+		Body:  req.Body,
+	}
+
 	switch confg.Backend {
 	case "nsq":
-		nsqReq := NSQPubReq{
-			Topic: req.Topic,
-			Body:  req.Body,
-		}
-
 		if err := NSQPublish(nsqReq); err != nil {
+			return err
+		}
+	case "nats":
+		if err := NATSPublish(nsqReq); err != nil {
 			return err
 		}
 	}

@@ -37,6 +37,9 @@ type (
 func StartNSQ(conf MSGBackendConfig) error {
 	s := time.Now()
 	config := nsq.NewConfig()
+	config.Set("OutputBufferSize", 0)
+	config.Set("OutputBufferTimeout", time.Duration(1)*time.Microsecond)
+	config.Set("MaxInFlight", 100000)
 	// config.MaxInFlight = 2
 	// config.OutputBufferSize = 0
 	// config.OutputBufferTimeout = time.Duration(2) * time.Millisecond
@@ -70,6 +73,7 @@ func createProducer(conf MSGBackendConfig, config *nsq.Config) (*nsq.Producer, e
 		utils.Error(fmt.Sprintf("error StartNSQ connection %v", err))
 		return w, err
 	}
+	w.Ping()
 
 	return w, nil
 }
@@ -148,28 +152,34 @@ func TestConn() error {
 
 // TestConnSeq test publish conn sequentially
 func TestConnSeq() error {
-	for x := 0; x < 100; x++ {
-		time.Sleep(time.Duration(2) * time.Second)
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(x int) {
+			defer wg.Done()
+			// time.Sleep(time.Duration(2) * time.Second)
 
-		chanName := fmt.Sprintf("dt_import_progress_587e3ff0b6daf684ef75df87")
-		m := map[string]interface{}{
-			"body": map[string]interface{}{
-				"progress": x,
-			},
-		}
-		msg, _ := json.Marshal(m)
-		// msg := []byte(fmt.Sprintf("message_%v", x))
+			chanName := fmt.Sprintf("dt_import_progress_587f6cbcff7488a15c45e9b0")
+			m := map[string]interface{}{
+				"body": map[string]interface{}{
+					"progress": x,
+				},
+			}
+			msg, _ := json.Marshal(m)
+			// msg := []byte(fmt.Sprintf("message_%v", x))
 
-		req := NSQPubReq{
-			Topic: chanName,
-			Body:  msg,
-		}
-		if err := NSQPublish(req); err != nil {
-		}
-		utils.Info(fmt.Sprintf("sent msg=%v", string(msg)))
+			req := NSQPubReq{
+				Topic: chanName,
+				Body:  msg,
+			}
+			if err := NSQPublish(req); err != nil {
+			}
+			utils.Info(fmt.Sprintf("sent msg=%v", string(msg)))
 
+		}(i)
 	}
 
+	wg.Wait()
 	return nil
 }
 
@@ -179,12 +189,12 @@ func NSQPublish(req NSQPubReq) error {
 
 	producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
 
-	if err := producer.Publish(req.Topic, req.Body); err != nil {
+	if err := producer.DeferredPublish(req.Topic, time.Duration(1)*time.Millisecond, req.Body); err != nil {
 		utils.Error(fmt.Sprintf("error NSQPublish Publish %v", err))
 		return err
 	}
 	defer producer.Stop()
 
-	utils.Info(fmt.Sprintf("test publish took: %v topic=%v", time.Since(e), req.Topic))
+	utils.Info(fmt.Sprintf("NSQPublish took: %v topic=%v", time.Since(e), req.Topic))
 	return nil
 }
