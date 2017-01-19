@@ -1,13 +1,13 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/bitly/go-nsq"
 
-	"encoding/json"
 	utils "github.com/b-eee/amagi"
 )
 
@@ -38,11 +38,11 @@ func StartNSQ(conf MSGBackendConfig) error {
 	s := time.Now()
 	config := nsq.NewConfig()
 	config.Set("OutputBufferSize", 0)
-	config.Set("OutputBufferTimeout", time.Duration(1)*time.Microsecond)
+	config.Set("OutputBufferTimeout", time.Duration(1)*time.Millisecond)
 	config.Set("MaxInFlight", 100000)
-	// config.MaxInFlight = 2
-	// config.OutputBufferSize = 0
-	// config.OutputBufferTimeout = time.Duration(2) * time.Millisecond
+	config.Set("LookupdPollInterval", time.Duration(0)*time.Millisecond)
+	config.Set("LookupdPollJitter", 0)
+	config.Set("Snappy", true)
 
 	if err := NSQCreateProducer(conf, NSQSetConfigConn(config)); err != nil {
 		return err
@@ -81,9 +81,6 @@ func createProducer(conf MSGBackendConfig, config *nsq.Config) (*nsq.Producer, e
 // NSQCreateConsumer create nsq consumer conn
 func NSQCreateConsumer(conf MSGBackendConfig, req NSQConsumerReq) error {
 	utils.Info(fmt.Sprintf("NSQCreateConsumer listen start.. chan=%v topic=%v", req.Channel, req.Topic))
-	// wg := &sync.WaitGroup{}
-	// wg.Add(1)
-
 	config := NSQGetConfigConn()
 
 	if (&nsq.Config{}) == config {
@@ -103,7 +100,7 @@ func NSQCreateConsumer(conf MSGBackendConfig, req NSQConsumerReq) error {
 		return nil
 	}), 100)
 
-	hosts := []string{"104.198.115.53:4161"}
+	hosts := []string{conf.Env.Host}
 	if err := q.ConnectToNSQLookupds(hosts); err != nil {
 		utils.Error(fmt.Sprintf("can't connect to nsq err=%v hosts=%v", err, hosts))
 	}
