@@ -33,6 +33,10 @@ type Environment struct {
 	Source         string `yaml:"source" json:"source"`
 	TLS            string `yaml:"TLS" json:"tls"`
 	ExternalIP     string `yaml:"externalIP" json:"external_ip"`
+
+	// MINIO
+	MIOAccessKeyID     string `yaml:"minio_accesskey_id" json:"minio_accesskey_id"`
+	MIOSecretAccessKey string `yaml:"minio_secretaccess_key" json:"minio_secretaccess_key"`
 }
 
 var (
