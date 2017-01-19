@@ -1,6 +1,7 @@
 package mailerBackend
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -20,6 +21,11 @@ type (
 		Receivers    []string
 		Sender       string
 		TemplateData map[string]interface{}
+	}
+
+	// TemplateVars template variables
+	TemplateVars struct {
+		URL string
 	}
 )
 
@@ -44,6 +50,8 @@ func Send(r *Request) error {
 		err = PostfixSendEmail()
 	case "smtp.google":
 		err = SMTPGoogleSendEmail(*r)
+	default:
+		err = fmt.Errorf("email backend not set")
 	}
 
 	return err

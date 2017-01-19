@@ -22,7 +22,6 @@ func InitMailSender() *Mail {
 
 // Send send email
 func (m *Mail) Send() error {
-	fmt.Println("sending email")
 	if err := mailerBackend.Send(&m.Request); err != nil {
 		return err
 	}

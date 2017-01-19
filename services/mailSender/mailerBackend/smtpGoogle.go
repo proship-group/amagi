@@ -23,10 +23,6 @@ type (
 
 // SMTPGoogleSendEmail smpt google send email backend
 func SMTPGoogleSendEmail(r Request) error {
-	// templateData := GTemplateData{
-	// 	URL: "http://localhost:4000",
-	// }
-
 	body, err := ParseTemplate(r.TemplateData, r.SGTemplateID)
 	if err != nil {
 		return err
@@ -48,15 +44,16 @@ func SMTPGoogleSendEmail(r Request) error {
 func ParseTemplate(templateData map[string]interface{}, SGTemplateID string) (string, error) {
 	storage := fileStorage.File{
 		BucketName: "test",
-		ObjectName: SGTemplateID,
+		ObjectName: fmt.Sprintf("%v.html", SGTemplateID),
 	}
-	filePath := templateFiles(storage.ObjectName)
-	defer os.Remove(filePath)
 
 	object, err := storage.GetObject()
 	if err != nil {
 		return "", err
 	}
+
+	filePath := templateFiles(storage.ObjectName)
+	defer os.Remove(filePath)
 
 	if err := fileStorage.MIOExtractAndStoreObject(object, filePath); err != nil {
 		return "", err

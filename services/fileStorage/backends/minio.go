@@ -19,7 +19,6 @@ func getMIOCredentials() configctl.Environment {
 // MIOCreateClient create client for minio
 func MIOCreateClient() (*minio.Client, error) {
 	env := getMIOCredentials()
-	fmt.Println(env, "client ============================")
 
 	client, err := minio.New(env.Host, env.MIOAccessKeyID, env.MIOSecretAccessKey, false)
 	if err != nil {
