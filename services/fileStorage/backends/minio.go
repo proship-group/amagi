@@ -30,18 +30,26 @@ func MIOCreateClient() (*minio.Client, error) {
 }
 
 // MIOPutObject put object to minio with io.Reader
-func MIOPutObject(fo FileObject) error {
+func MIOPutObject(fo FileObject) (interface{}, error) {
 	client, _ := MIOCreateClient()
 
-	res, err := client.PutObject(fo.BucketName, fo.ObjectName, fo.File, "application/octet-stream")
-	if err != nil {
+	if _, err := client.PutObject(fo.BucketName, fo.ObjectName, fo.File, "application/octet-stream"); err != nil {
 		utils.Error(fmt.Sprintf("error MIOPutObject %v", err))
-		return err
+		return nil, err
 	}
 
-	fmt.Println(res)
+	info, err := client.StatObject(fo.BucketName, fo.ObjectName)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error on MIOPutObject StatObject %v", err))
+		return nil, err
+	}
 
-	return nil
+	return info, nil
+}
+
+// MIOExtractObj extract data to objectInfo
+func MIOExtractObj(data interface{}) minio.ObjectInfo {
+	return data.(minio.ObjectInfo)
 }
 
 // MIOGetObject minio get object

@@ -23,14 +23,16 @@ var (
 )
 
 // PutObject put object or upload object to file storage with io.Reader
-func PutObject(fo FileObject) error {
+func PutObject(fo FileObject) (interface{}, error) {
 	var err error
+	var resp interface{}
+
 	switch os.Getenv(FileStorageFlagENV) {
 	case "minio":
-		err = MIOPutObject(fo)
+		resp, err = MIOPutObject(fo)
 	}
 
-	return err
+	return resp, err
 }
 
 // GetObject get object

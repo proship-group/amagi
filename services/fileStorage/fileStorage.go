@@ -21,17 +21,18 @@ type (
 )
 
 // PutObject put object to file storage
-func (fs *File) PutObject() error {
+func (fs *File) PutObject() (interface{}, error) {
 	req := backends.FileObject{
 		File:       fs.File,
 		ObjectName: fs.ObjectName,
 		BucketName: fs.BucketName,
 	}
-	if err := backends.PutObject(req); err != nil {
-		return err
+	resp, err := backends.PutObject(req)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 // GetObject get object from storage
