@@ -37,7 +37,7 @@ func (fs *File) PutObject() error {
 // GetObject get object from storage
 func (fs *File) GetObject() (interface{}, error) {
 	req := backends.FileObject{
-		BucketName: "test",
+		BucketName: fs.BucketName,
 		ObjectName: fs.ObjectName,
 	}
 

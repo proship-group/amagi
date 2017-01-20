@@ -1,8 +1,6 @@
 package mailSender
 
 import (
-	"fmt"
-
 	"github.com/b-eee/amagi/services/mailSender/mailerBackend"
 )
 

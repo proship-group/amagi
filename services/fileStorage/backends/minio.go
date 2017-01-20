@@ -51,7 +51,7 @@ func MIOGetObject(fo FileObject) (interface{}, error) {
 		utils.Error(fmt.Sprintf("error MIOGetObject %v", err))
 		return nil, err
 	}
-	fmt.Println(fo.BucketName, fo.ObjectName)
+
 	obj, err := client.GetObject(fo.BucketName, fo.ObjectName)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error MIOGetObject %v", err))
