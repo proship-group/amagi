@@ -1,23 +1,39 @@
 package database
 
 import (
+	"apicore/lib/database"
 	"context"
 	"fmt"
 	"log"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/olivere/elastic.v5"
 
+	"strconv"
+
 	utils "github.com/b-eee/amagi"
+	"github.com/jmcvetta/neoism"
 )
 
 var (
 	// ESConn main elasticsearch connection var
 	ESConn *elastic.Client
+
+	// DatastoreNode datastore node labels
+	DatastoreNode = "ds:Datastore"
+	// DatastoreFields datastore fields
+	DatastoreFields = "fs:Fields"
+	// FieldNodeLabel field node label
+	FieldNodeLabel = "f:Field"
+	// RoleNodeLabel role node label name
+	RoleNodeLabel = "r:Role"
+	// UserNodeLabel user node name label
+	UserNodeLabel = "u:User"
 )
 
 type (
@@ -34,6 +50,8 @@ type (
 
 		SortField string
 		SortAsc   bool
+
+		UserID string
 	}
 
 	// Testing test struct
@@ -59,11 +77,17 @@ type (
 
 	// ResultItem result item from mongodb
 	ResultItem struct {
-		IID       bson.ObjectId `json:"i_id"`
-		DID       string        `json:"d_id"`
-		IndexName string        `json:"index_name"`
-		TypeName  string        `json:"type_name"`
-		Item      interface{}   `json:"item"`
+		IID         bson.ObjectId          `json:"i_id"`
+		DID         string                 `json:"d_id"`
+		FID         string                 `json:"f_id"`
+		MaxScore    float64                `json:"max_score"`
+		Order       int                    `json:"order"`
+		IndexName   string                 `json:"index_name"`
+		TypeName    string                 `json:"type_name"`
+		ColSettings map[string]interface{} `json:"col_settings"`
+		Value       string                 `json:"value"`
+		Item        interface{}            `json:"item"`
+		Title       string                 `json:"title"`
 	}
 
 	// ItemMap generic item map
@@ -121,10 +145,16 @@ func (req *ESSearchReq) ESAddDocument() error {
 
 // ESTermQuery new term query
 func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
-	termQuery := elastic.NewTermQuery(req.SearchField, req.SearchValues)
+	// termQuery := elastic.NewTermQuery(req.SearchField, req.SearchValues)
+	hl := elastic.NewHighlight()
+	hl = hl.Fields(elastic.NewHighlighterField(req.SearchField))
+	hl = hl.PreTags("<em class='searched_em'>").PostTags("</em")
+	// phrase := elastic.NewMatchQuery(req.SearchField, req.SearchValues)
+
+	q := elastic.NewQueryStringQuery(fmt.Sprintf("%v", req.SearchValues))
 	searchResult, err := ESConn.Search().
-		Query(termQuery).
-		From(0).Size(100).
+		Highlight(hl).
+		Query(q).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -141,16 +171,25 @@ func CreateContext() context.Context {
 
 // ESSearchItems search items to mongodb by ID
 func ESSearchItems(result elastic.SearchResult) ([]ResultItem, error) {
+	s := time.Now()
 	// TODO DEPRECATE WHEN SESSION UNIFIED -JP
 	MongodbStart()
+	defer MongodbSession.Close()
 
 	var resultItems []ResultItem
 	var di DistinctItem
-	for _, id := range result.Each(reflect.TypeOf(di)) {
+
+	for index, id := range result.Each(reflect.TypeOf(di)) {
+		// original searched item before reflect
+		searchItem := result.Hits.Hits[index]
 		if t, ok := id.(DistinctItem); ok {
 			resultItems = append(resultItems, ResultItem{
 				IID: bson.ObjectIdHex(t.IID),
 				DID: t.DID,
+				FID: t.FID,
+				// Value:    result.Hits.Hits[index].Highlight["value"][0],
+				Order:    index,
+				MaxScore: (*searchItem.Score),
 			})
 		}
 	}
@@ -159,6 +198,7 @@ func ESSearchItems(result elastic.SearchResult) ([]ResultItem, error) {
 		return nil, err
 	}
 
+	utils.Info(fmt.Sprintf("ESSearchItems took: %v", time.Since(s)))
 	return resultItems, nil
 }
 
@@ -173,29 +213,119 @@ func GetItemsToMongodbByID(searchedItems *[]ResultItem) error {
 		go func(item ResultItem, i int) {
 			defer wg.Done()
 
-			s, sc := BeginMongo()
-			defer sc.Close()
-
-			var collectionName string
-			switch item.IndexName {
-			case "datastore":
-				collectionName = fmt.Sprintf("items_%v", item.DID)
-			default:
-				collectionName = fmt.Sprintf("items_%v", item.DID)
-			}
-
-			c := sc.DB(Db).C(collectionName)
-			var rItem map[string]interface{}
-			if err := c.Find(bson.M{"_id": item.IID}).One(&rItem); err != nil {
-				utils.Error(fmt.Sprintf("error find %v", err))
+			if err := findItem(searchedItems, &item, i); err != nil {
 				return
 			}
-
-			sItems[index].Item = rItem
-			utils.Info(fmt.Sprintf("search ResultItem took: %v", time.Since(s)))
 		}(sitem, index)
 	}
 
 	wg.Wait()
 	return nil
+}
+
+func findItem(sItems *[]ResultItem, item *ResultItem, i int) error {
+	s, sc := BeginMongo()
+	colSettings := make(chan []map[string]interface{})
+	defer close(colSettings)
+	defer sc.Close()
+
+	go GetDatastoreColSettings("588028a66aeb5890349a6c98", item.DID, colSettings)
+
+	var collectionName string
+	switch item.IndexName {
+	case "datastore":
+		collectionName = fmt.Sprintf("items_%v", item.DID)
+	default:
+		collectionName = fmt.Sprintf("items_%v", item.DID)
+	}
+
+	c := sc.DB(Db).C(collectionName)
+	fmt.Println("item collection", item.DID)
+	var rItem map[string]interface{}
+	if err := c.Find(bson.M{"_id": item.IID}).One(&rItem); err != nil {
+		utils.Error(fmt.Sprintf("error find %v", err))
+		return nil
+	}
+
+	(*sItems)[i].Item = rItem
+	(*sItems)[i].Value = item.Value
+
+	cols := <-colSettings
+	(*sItems)[i].Title = ItemTitle(rItem, cols...)
+	(*sItems)[i].ColSettings = colSettingsMap(cols)
+	_ = s
+	// utils.Info(fmt.Sprintf("search findItem ResultItem took: %v", time.Since(s)))
+	return nil
+}
+
+func colSettingsMap(colSettings []map[string]interface{}) map[string]interface{} {
+	colMap := make(map[string]interface{})
+
+	for _, col := range colSettings {
+		k := col["id"].(string)
+		colMap[k] = col
+	}
+
+	return colMap
+}
+
+// GetDatastoreColSettings get datastore column settings
+func GetDatastoreColSettings(userID, datastoreID string, colSets chan []map[string]interface{}) error {
+	s := time.Now()
+	var colSettings []map[string]interface{}
+
+	res := []struct {
+		ColumnSettings struct {
+			Data map[string]interface{} `json:"data"`
+		} `json:"column_settings"`
+	}{}
+
+	cypher := neoism.CypherQuery{
+		Statement: fmt.Sprintf(`
+			MATCH (%v {d_id:{datastoreID}})-[]->(%v)-[]->(%v)<-[:CAN_USE]-(%v)<-[:HAS]-(%v {u_id:{userID}})
+            RETURN DISTINCT f as column_settings
+			UNION
+			MATCH (%v {d_id:{datastoreID}})-[]->(%v)-[]->(%v)<-[:CAN_USE]-(gr:Role)<-[:HAS]-(pg:Group)-[:PARENT*0..]->(g:Group)<-[:HAS]-(%v {u_id:{userID}})
+            RETURN DISTINCT f as column_settings
+        `, DatastoreNode, DatastoreFields, FieldNodeLabel, RoleNodeLabel, UserNodeLabel,
+			DatastoreNode, DatastoreFields, FieldNodeLabel, UserNodeLabel),
+		Parameters: neoism.Props{"datastoreID": datastoreID, "userID": userID},
+		Result:     &res,
+	}
+	if err := database.ExecuteCypherQuery(cypher); err != nil {
+		utils.Error(fmt.Sprintf("error GetDatastoreColSettings %v", err))
+		colSets <- colSettings
+		return err
+	}
+
+	for _, i := range res {
+		colSettings = append(colSettings, i.ColumnSettings.Data)
+	}
+
+	colSets <- colSettings
+	utils.Info(fmt.Sprintf("GetDatastoreColSettings took: %v", time.Since(s)))
+	return nil
+}
+
+// ItemTitle extract item ttiles
+func ItemTitle(item map[string]interface{}, columnSettings ...map[string]interface{}) string {
+	var titles []map[string]interface{}
+	for _, item := range columnSettings {
+		if value, exists := item["as_title"].(bool); exists && value {
+			titles = append(titles, map[string]interface{}{
+				"columnID":           item["id"].(string),
+				"title_order_number": item["title_order"].(string),
+			})
+		}
+	}
+
+	titleBuilt := make([]string, len(titles))
+	for _, t := range titles {
+		val := item[t["columnID"].(string)]
+		if index, err := strconv.Atoi(t["title_order_number"].(string)); err == nil {
+			// TODO ADD ERR HANDLER IF OUT OF RANGE -JP
+			titleBuilt[index-1] = fmt.Sprintf("%v", val)
+		}
+	}
+	return strings.Join(titleBuilt, " ")
 }
