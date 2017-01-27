@@ -89,7 +89,6 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		conn.Addrs = []string{os.Getenv("HOST")}
 	}
 
-	fmt.Println(conn, "==============")
 	// if os.Getenv("SECURE") == "true" {
 	// 	conn.Username = cfe.Username
 	// 	conn.Password = cfe.Password
