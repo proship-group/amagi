@@ -36,6 +36,7 @@ func StartElasticSearch() error {
 
 	ESConn = client
 
+	utils.Info(fmt.Sprintf("connected to esURL=%v", esURL))
 	return nil
 }
 

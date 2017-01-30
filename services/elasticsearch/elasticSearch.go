@@ -133,11 +133,24 @@ type (
 		CollectionName string
 	}
 
+	// GenericESItem generic elasticsearch item for save
+	GenericESItem struct {
+		IID       string `bson:"i_id" json:"i_id"`
+		DID       string `bson:"d_id" json:"d_id"`
+		FID       string `bson:"f_id" json:"f_id"`
+		IndexName string `bson:"index_name" json:"index_name"`
+		TypeName  string `bson:"type_name" json:"type_name"`
+		Value     string `bson:"value" json:"value"`
+	}
+
 	// ItemMofifiersProc item modifier processors
 	ItemMofifiersProc func(ItemModifier) error
 
 	// ItemMap generic item map
 	ItemMap map[string]interface{}
+
+	// ItemFieldSettings item field settings
+	ItemFieldSettings map[string]map[string]interface{}
 )
 
 // ESCreateIndex elasticsearch create index
@@ -154,14 +167,25 @@ func ESCreateIndex(indexName string) error {
 
 // ESAddDocument add document to the index
 func (req *ESSearchReq) ESAddDocument() error {
+	// indexname should be lowercase
+	indexName := strings.ToLower(req.IndexName)
+
+	if exists, err := database.ESGetConn().IndexExists(indexName).Do(CreateContext()); !exists || err != nil {
+		utils.Error(fmt.Sprintf("index does not exists! err=%v creating index.. %v", err, indexName))
+		if err := ESCreateIndex(strings.ToLower(indexName)); err != nil {
+			return err
+		}
+	}
+
 	s := time.Now()
 	if _, err := database.ESGetConn().Index().
-		Index(req.IndexName).
+		Index(indexName).
 		Type(req.Type).
-		Id("1").
 		BodyJson(req.BodyJSON).
 		Refresh("true").
 		Do(CreateContext()); err != nil {
+
+		utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
 		return err
 	}
 
@@ -181,10 +205,11 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		Boost(1.2).
 		Flags("INTERSECTION|COMPLEMENT|EMPTY")
 
+	fmt.Println(regexpQuery, "======= query")
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
 		Query(regexpQuery).
-		From(0).Size(50).
+		From(0).Size(1000).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -199,7 +224,7 @@ func buildRegexpString(str interface{}) string {
 	for _, t := range strings.Split(fmt.Sprintf("%v", str), " ") {
 
 		// regexps
-		st = append(st, fmt.Sprintf("%v.*?+", t))
+		st = append(st, fmt.Sprintf("%v.*", t))
 		st = append(st, fmt.Sprintf("*.%v", t))
 		st = append(st, fmt.Sprintf("%v", t))
 		st = append(st, fmt.Sprintf("[%v]", t))
@@ -229,14 +254,16 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 	for index, id := range result.Each(reflect.TypeOf(di)) {
 		// original searched item before reflect
 		searchItem := result.Hits.Hits[index]
+		indexName := result.Hits.Hits[index].Index
 
 		if t, ok := id.(DistinctItem); ok {
 			resultItem := ResultItem{
-				IID:      bson.ObjectIdHex(t.IID),
-				DID:      t.DID,
-				FID:      t.FID,
-				Order:    index,
-				MaxScore: (*searchItem.Score),
+				IID:       bson.ObjectIdHex(t.IID),
+				DID:       t.DID,
+				FID:       t.FID,
+				Order:     index,
+				IndexName: indexName,
+				MaxScore:  (*searchItem.Score),
 			}
 
 			if len(result.Hits.Hits[index].Highlight["value"]) != 0 {
@@ -247,12 +274,48 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		}
 	}
 
-	if err := GetItemsToMongodbByID(&resultItems, esSearchReq); err != nil {
-		return nil, err
+	if err := GetItemsByCollections(&resultItems, esSearchReq); err != nil {
+
 	}
+
+	// if err := GetItemsToMongodbByID(&resultItems, esSearchReq); err != nil {
+	// 	return nil, err
+	// }
 
 	utils.Info(fmt.Sprintf("ESSearchItems took: %v", time.Since(s)))
 	return resultItems, nil
+}
+
+// GetItemsByCollections get items by group of collections
+func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq) error {
+	sItems := (*searchedItems)
+	groupedItems := make(map[string][]ItemModifier)
+
+	for index, sItem := range sItems {
+		itemModifier := ItemModifier{
+			SItems:        searchedItems,
+			Item:          &sItem,
+			Index:         index,
+			UserBasicInfo: esSearchReq.UserBasicInfo,
+		}
+		fmt.Println("itemModifier.Item.IndexName ", itemModifier.Item.IndexName)
+		switch itemModifier.Item.IndexName {
+		case "datastore":
+			itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
+			groupedItems[itemModifier.CollectionName] = append(groupedItems[itemModifier.CollectionName], itemModifier)
+		case "histories":
+			itemModifier.CollectionName = "histories"
+			groupedItems[itemModifier.CollectionName] = append(groupedItems[itemModifier.CollectionName], itemModifier)
+		}
+
+	}
+
+	for k, i := range groupedItems {
+		fmt.Println(len(i))
+		fmt.Println(k, "============================================ssssssssssss")
+	}
+
+	return nil
 }
 
 // GetItemsToMongodbByID get items to mongodb by ID
@@ -271,10 +334,12 @@ func GetItemsToMongodbByID(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 				Index:         i,
 				UserBasicInfo: esSearchReq.UserBasicInfo,
 			}
-
 			switch itemModifier.Item.IndexName {
 			case "datastore":
 				itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
+			case "histories":
+				fmt.Println(itemModifier.Item.IndexName, "==================================")
+
 			default:
 				itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
 			}
@@ -320,11 +385,7 @@ func findDatastoreByID(itemModifier ItemModifier) error {
 
 func findItemByID(itemModifier ItemModifier) error {
 	s, sc := database.BeginMongo()
-	colSettings := make(chan []map[string]interface{})
-	defer close(colSettings)
 	defer sc.Close()
-
-	go GetDatastoreColSettings(itemModifier.UserBasicInfo.ID, itemModifier.Item.DID, colSettings)
 
 	c := sc.DB(database.Db).C(itemModifier.CollectionName)
 	var rItem map[string]interface{}
@@ -333,12 +394,10 @@ func findItemByID(itemModifier ItemModifier) error {
 		return nil
 	}
 
-	(*itemModifier.SItems)[itemModifier.Index].Item = rItem
+	// (*itemModifier.SItems)[itemModifier.Index].Item = rItem
 	(*itemModifier.SItems)[itemModifier.Index].Value = itemModifier.Item.Value
 
-	cols := <-colSettings
-	(*itemModifier.SItems)[itemModifier.Index].Title = ItemTitle(rItem, cols...)
-	(*itemModifier.SItems)[itemModifier.Index].ColSettings = colSettingsMap(cols)
+	(*itemModifier.SItems)[itemModifier.Index].Title = rItem["title"].(string)
 	_ = s
 	return nil
 }
