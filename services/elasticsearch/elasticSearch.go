@@ -79,6 +79,7 @@ type (
 
 	// DistinctItem unwinded item
 	DistinctItem struct {
+		QID   string `bson:"q_id" json:"q_id"`
 		IID   string `bson:"i_id" json:"i_id"`
 		DID   string `bson:"d_id" json:"d_id"`
 		FID   string `bson:"f_id" json:"f_id"`
@@ -88,6 +89,7 @@ type (
 
 	// ResultItem result item from mongodb
 	ResultItem struct {
+		QID         string                 `json:"q_id"`
 		IID         bson.ObjectId          `json:"i_id"`
 		DID         string                 `json:"d_id"`
 		FID         string                 `json:"f_id"`
@@ -135,6 +137,7 @@ type (
 
 	// GenericESItem generic elasticsearch item for save
 	GenericESItem struct {
+		QID       string `bson:"q_id" json:"q_id"`
 		IID       string `bson:"i_id" json:"i_id"`
 		DID       string `bson:"d_id" json:"d_id"`
 		FID       string `bson:"f_id" json:"f_id"`
@@ -258,12 +261,15 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 
 		if t, ok := id.(DistinctItem); ok {
 			resultItem := ResultItem{
-				IID:       bson.ObjectIdHex(t.IID),
 				DID:       t.DID,
 				FID:       t.FID,
 				Order:     index,
 				IndexName: indexName,
 				MaxScore:  (*searchItem.Score),
+			}
+
+			if len(t.IID) != 0 {
+				resultItem.IID = bson.ObjectIdHex(t.IID)
 			}
 
 			if len(result.Hits.Hits[index].Highlight["value"]) != 0 {
@@ -275,47 +281,149 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 	}
 
 	if err := GetItemsByCollections(&resultItems, esSearchReq); err != nil {
-
+		return nil, err
 	}
-
-	// if err := GetItemsToMongodbByID(&resultItems, esSearchReq); err != nil {
-	// 	return nil, err
-	// }
 
 	utils.Info(fmt.Sprintf("ESSearchItems took: %v", time.Since(s)))
 	return resultItems, nil
 }
 
+type protectedObjectResults struct {
+	sync.RWMutex
+	ObjectMapRes map[bson.ObjectId]ResultItem
+}
+
+func (po *protectedObjectResults) Get(key bson.ObjectId) ResultItem {
+	po.RLock()
+	defer po.RUnlock()
+
+	if value, exists := po.ObjectMapRes[key]; exists {
+		return value
+	}
+
+	return ResultItem{}
+}
+
+func (po *protectedObjectResults) Set(key bson.ObjectId, resultItem ResultItem) {
+	po.Lock()
+	po.ObjectMapRes[key] = resultItem
+	po.Unlock()
+}
+
 // GetItemsByCollections get items by group of collections
 func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq) error {
+	s := time.Now()
+
 	sItems := (*searchedItems)
 	groupedItems := make(map[string][]ItemModifier)
 
-	for index, sItem := range sItems {
+	for index := range sItems {
 		itemModifier := ItemModifier{
 			SItems:        searchedItems,
-			Item:          &sItem,
+			Item:          &sItems[index],
 			Index:         index,
 			UserBasicInfo: esSearchReq.UserBasicInfo,
 		}
-		fmt.Println("itemModifier.Item.IndexName ", itemModifier.Item.IndexName)
+
 		switch itemModifier.Item.IndexName {
-		case "datastore":
-			itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
-			groupedItems[itemModifier.CollectionName] = append(groupedItems[itemModifier.CollectionName], itemModifier)
-		case "histories":
-			itemModifier.CollectionName = "histories"
-			groupedItems[itemModifier.CollectionName] = append(groupedItems[itemModifier.CollectionName], itemModifier)
+
+		// condition block will default to search datastore collections
+		case "datastore", "histories":
+			collection := fmt.Sprintf("items_%v", itemModifier.Item.DID)
+
+			if len(groupedItems[collection]) == 0 {
+				groupedItems[collection] = []ItemModifier{}
+			}
+			groupedItems[collection] = append(groupedItems[collection], itemModifier)
+		case "queries":
+			collection := "queries"
+			itemModifier.CollectionName = collection
+			groupedItems[collection] = append(groupedItems[collection], itemModifier)
 		}
-
 	}
 
-	for k, i := range groupedItems {
-		fmt.Println(len(i))
-		fmt.Println(k, "============================================ssssssssssss")
+	// fix fatal error: concurrent map writes
+	protectedItem := protectedObjectResults{ObjectMapRes: make(map[bson.ObjectId]ResultItem)}
+	var newResults []ResultItem
+	var wg sync.WaitGroup
+	for key := range groupedItems {
+		wg.Add(1)
+
+		go func(k string) {
+			defer wg.Done()
+
+			var ids []bson.ObjectId
+			for _, s := range groupedItems[k] {
+				ids = append(ids, s.Item.IID)
+
+				switch s.Item.IndexName {
+				case "queries":
+					// s.Item.Title = s.Item.IID
+					protectedItem.Set(bson.ObjectIdHex(s.Item.QID), (*s.Item))
+				default:
+					protectedItem.Set(s.Item.IID, (*s.Item))
+				}
+
+			}
+
+			// for additional data
+			// for _, pi := range protectedItem.ObjectMapRes {
+			// 	switch pi.IndexName {
+
+			// 	}
+			// }
+
+			results, _ := FindItemsInCollectionByIDS(k, ids...)
+			// if err != nil {
+			// 	return
+			// }
+
+			for _, r := range results {
+				id := r["_id"].(bson.ObjectId)
+				updateObj := ResultItem{
+					Title:     r["title"].(string),
+					Value:     protectedItem.Get(id).Value,
+					PID:       protectedItem.Get(id).PID,
+					DID:       protectedItem.Get(id).DID,
+					IndexName: protectedItem.Get(id).IndexName,
+					TypeName:  protectedItem.Get(id).TypeName,
+				}
+
+				protectedItem.Set(id, updateObj)
+
+			}
+
+		}(key)
+	}
+	wg.Wait()
+
+	for _, item := range protectedItem.ObjectMapRes {
+		newResults = append(newResults, item)
 	}
 
+	(*searchedItems) = newResults
+	utils.Info(fmt.Sprintf("GetItemsByCollections took: %v", time.Since(s)))
 	return nil
+}
+
+// FindItemsInCollectionByIDS find items in collection by item ids
+func FindItemsInCollectionByIDS(collectionName string, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
+	fmt.Println("IDS ", len(IDS), collectionName)
+	if len(IDS) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	var res []map[string]interface{}
+	_, sc := database.BeginMongo()
+	c := sc.DB(database.Db).C(collectionName)
+	defer sc.Close()
+
+	if err := c.Find(bson.M{"_id": bson.M{"$in": IDS}}).All(&res); err != nil {
+		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
+		return res, err
+	}
+
+	return res, nil
 }
 
 // GetItemsToMongodbByID get items to mongodb by ID
