@@ -55,6 +55,8 @@ type (
 
 		UserID        string
 		UserBasicInfo UserBasicInfo
+
+		UpdateChanges map[string]interface{}
 	}
 
 	// UserBasicInfo user basic info
@@ -82,6 +84,7 @@ type (
 		DID   string `bson:"d_id" json:"d_id"`
 		FID   string `bson:"f_id" json:"f_id"`
 		PID   string `bson:"p_id" json:"p_id"`
+		WID   string `bson:"w_id" json:"w_id"`
 		Index string `json:"index"`
 		Value string `bson:"value" json:"value"`
 	}
@@ -196,6 +199,69 @@ func (req *ESSearchReq) ESAddDocument() error {
 	return nil
 }
 
+// ESDeleteDocument delete document
+func (req *ESSearchReq) ESDeleteDocument() error {
+	del := elastic.NewMatchQuery("i_id", req.BodyJSON.(DistinctItem).IID)
+
+	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
+		// for multiple index search query, pass in slice of string
+		Index(strings.Split(req.IndexName, ",")...).
+		Query(del).
+		Do(CreateContext())
+	if err != nil {
+		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
+		return err
+	}
+
+	fmt.Println("deleted: ", res.Deleted)
+	if res.Deleted == 0 {
+		return fmt.Errorf("deleted: %v", res.Deleted)
+	}
+
+	return nil
+}
+
+// ESUpdateDocument update elasticSearch document
+func (req *ESSearchReq) ESUpdateDocument() error {
+	q := fmt.Sprintf("ctx._source.f_id =\"%v\";ctx._source.i_id =\"%v\";", req.BodyJSON.(DistinctItem).FID, req.BodyJSON.(DistinctItem).IID)
+	fmt.Println(q)
+	// update, err := database.ESGetConn().Update().
+	// 	Index(req.IndexName).
+	// 	Script(elastic.NewScript(q)).
+	// 	Params(req.UpdateChanges).
+	// 	Do(CreateContext())
+	// update, err := elastic.NewUpdateByQueryService(database.ESGetConn()).
+	// 	Index("datastore").
+	// 	QueryString()
+
+	// n := []elastic.Query{
+	// 	elastic.NewNestedQuery(
+	// 		"i_id",
+	// 		elastic.NewMatchQuery("source.i_id", req.BodyJSON.(DistinctItem).IID),
+	// 	),
+	// 	elastic.NewNestedQuery(
+	// 		"f_id",
+	// 		elastic.NewMatchQuery("source.f_id", req.BodyJSON.(DistinctItem).FID),
+	// 	),
+	// }
+
+	boolQuery := elastic.NewBoolQuery().Filter(
+		elastic.NewMatchQuery("source.i_id", req.BodyJSON.(DistinctItem).IID),
+		elastic.NewMatchQuery("source.f_id", req.BodyJSON.(DistinctItem).FID),
+	)
+
+	// TODO UPDATE QUERY
+	// if err != nil {
+	// 	utils.Error(fmt.Sprintf("error ESUpdateDocument %v", err))
+	// 	return err
+	// }
+
+	// fmt.Println("update found", update.GetResult.Found)
+
+	return nil
+
+}
+
 // ESTermQuery new term query
 func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
 	// termQuery := elastic.NewTermQuery(req.SearchField, req.SearchValues)
@@ -205,9 +271,7 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 
 	joinedText := buildRegexpString(req.SearchValues)
 	regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
-		Boost(1.2).
-		Flags("INTERSECTION|COMPLEMENT|EMPTY")
-
+		Boost(1.2)
 	fmt.Println(regexpQuery, "======= query")
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
@@ -229,8 +293,8 @@ func buildRegexpString(str interface{}) string {
 		// regexps
 		st = append(st, fmt.Sprintf("%v.*", t))
 		st = append(st, fmt.Sprintf("*.%v", t))
-		st = append(st, fmt.Sprintf("%v", t))
-		st = append(st, fmt.Sprintf("[%v]", t))
+		// st = append(st, fmt.Sprintf("%v", t))
+		// st = append(st, fmt.Sprintf("[%v]", t))
 	}
 
 	return strings.Join(st, "|")
