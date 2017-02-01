@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/b-eee/amagi/services/database"
-	"github.com/jmcvetta/neoism"
 	"gopkg.in/mgo.v2/bson"
 
 	utils "github.com/b-eee/amagi"
@@ -79,15 +77,18 @@ type (
 
 	// DistinctItem unwinded item
 	DistinctItem struct {
+		QID   string `bson:"q_id" json:"q_id"`
 		IID   string `bson:"i_id" json:"i_id"`
 		DID   string `bson:"d_id" json:"d_id"`
 		FID   string `bson:"f_id" json:"f_id"`
+		PID   string `bson:"p_id" json:"p_id"`
 		Index string `json:"index"`
 		Value string `bson:"value" json:"value"`
 	}
 
 	// ResultItem result item from mongodb
 	ResultItem struct {
+		QID         string                 `json:"q_id"`
 		IID         bson.ObjectId          `json:"i_id"`
 		DID         string                 `json:"d_id"`
 		FID         string                 `json:"f_id"`
@@ -133,11 +134,26 @@ type (
 		CollectionName string
 	}
 
+	// GenericESItem generic elasticsearch item for save
+	GenericESItem struct {
+		QID       string `bson:"q_id" json:"q_id"`
+		IID       string `bson:"i_id" json:"i_id"`
+		DID       string `bson:"d_id" json:"d_id"`
+		FID       string `bson:"f_id" json:"f_id"`
+		PID       string `bson:"p_id" json:"p_id"`
+		IndexName string `bson:"index_name" json:"index_name"`
+		TypeName  string `bson:"type_name" json:"type_name"`
+		Value     string `bson:"value" json:"value"`
+	}
+
 	// ItemMofifiersProc item modifier processors
 	ItemMofifiersProc func(ItemModifier) error
 
 	// ItemMap generic item map
 	ItemMap map[string]interface{}
+
+	// ItemFieldSettings item field settings
+	ItemFieldSettings map[string]map[string]interface{}
 )
 
 // ESCreateIndex elasticsearch create index
@@ -154,14 +170,25 @@ func ESCreateIndex(indexName string) error {
 
 // ESAddDocument add document to the index
 func (req *ESSearchReq) ESAddDocument() error {
+	// indexname should be lowercase
+	indexName := strings.ToLower(req.IndexName)
+
+	if exists, err := database.ESGetConn().IndexExists(indexName).Do(CreateContext()); !exists || err != nil {
+		utils.Error(fmt.Sprintf("index does not exists! err=%v creating index.. %v", err, indexName))
+		if err := ESCreateIndex(strings.ToLower(indexName)); err != nil {
+			return err
+		}
+	}
+
 	s := time.Now()
 	if _, err := database.ESGetConn().Index().
-		Index(req.IndexName).
+		Index(indexName).
 		Type(req.Type).
-		Id("1").
 		BodyJson(req.BodyJSON).
 		Refresh("true").
 		Do(CreateContext()); err != nil {
+
+		utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
 		return err
 	}
 
@@ -181,10 +208,11 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		Boost(1.2).
 		Flags("INTERSECTION|COMPLEMENT|EMPTY")
 
+	fmt.Println(regexpQuery, "======= query")
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
 		Query(regexpQuery).
-		From(0).Size(50).
+		From(0).Size(1000).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -199,7 +227,7 @@ func buildRegexpString(str interface{}) string {
 	for _, t := range strings.Split(fmt.Sprintf("%v", str), " ") {
 
 		// regexps
-		st = append(st, fmt.Sprintf("%v.*?+", t))
+		st = append(st, fmt.Sprintf("%v.*", t))
 		st = append(st, fmt.Sprintf("*.%v", t))
 		st = append(st, fmt.Sprintf("%v", t))
 		st = append(st, fmt.Sprintf("[%v]", t))
@@ -229,14 +257,21 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 	for index, id := range result.Each(reflect.TypeOf(di)) {
 		// original searched item before reflect
 		searchItem := result.Hits.Hits[index]
+		indexName := result.Hits.Hits[index].Index
 
 		if t, ok := id.(DistinctItem); ok {
 			resultItem := ResultItem{
-				IID:      bson.ObjectIdHex(t.IID),
-				DID:      t.DID,
-				FID:      t.FID,
-				Order:    index,
-				MaxScore: (*searchItem.Score),
+				DID:       t.DID,
+				FID:       t.FID,
+				PID:       t.PID,
+				QID:       t.QID,
+				Order:     index,
+				IndexName: indexName,
+				MaxScore:  (*searchItem.Score),
+			}
+
+			if len(t.IID) != 0 {
+				resultItem.IID = bson.ObjectIdHex(t.IID)
 			}
 
 			if len(result.Hits.Hits[index].Highlight["value"]) != 0 {
@@ -247,7 +282,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		}
 	}
 
-	if err := GetItemsToMongodbByID(&resultItems, esSearchReq); err != nil {
+	if err := GetItemsByCollections(&resultItems, esSearchReq); err != nil {
 		return nil, err
 	}
 
@@ -255,162 +290,148 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 	return resultItems, nil
 }
 
-// GetItemsToMongodbByID get items to mongodb by ID
-func GetItemsToMongodbByID(searchedItems *[]ResultItem, esSearchReq ESSearchReq) error {
+type protectedObjectResults struct {
+	sync.RWMutex
+	ObjectMapRes map[bson.ObjectId]ResultItem
+}
+
+func (po *protectedObjectResults) Get(key bson.ObjectId) ResultItem {
+	po.RLock()
+	defer po.RUnlock()
+
+	if value, exists := po.ObjectMapRes[key]; exists {
+		return value
+	}
+
+	return ResultItem{}
+}
+
+func (po *protectedObjectResults) Set(key bson.ObjectId, resultItem ResultItem) {
+	po.Lock()
+	po.ObjectMapRes[key] = resultItem
+	po.Unlock()
+}
+
+// GetItemsByCollections get items by group of collections
+func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq) error {
+	s := time.Now()
 
 	sItems := (*searchedItems)
+	groupedItems := make(map[string][]ItemModifier)
+
+	for index := range sItems {
+		itemModifier := ItemModifier{
+			SItems:        searchedItems,
+			Item:          &sItems[index],
+			Index:         index,
+			UserBasicInfo: esSearchReq.UserBasicInfo,
+		}
+
+		switch itemModifier.Item.IndexName {
+
+		// condition block will default to search datastore collections
+		case "datastore", "histories":
+			collection := fmt.Sprintf("items_%v", itemModifier.Item.DID)
+
+			if len(groupedItems[collection]) == 0 {
+				groupedItems[collection] = []ItemModifier{}
+			}
+			groupedItems[collection] = append(groupedItems[collection], itemModifier)
+		case "queries":
+			collection := "queries"
+			itemModifier.CollectionName = collection
+			groupedItems[collection] = append(groupedItems[collection], itemModifier)
+		}
+	}
+
+	// fix fatal error: concurrent map writes
+	protectedItem := protectedObjectResults{ObjectMapRes: make(map[bson.ObjectId]ResultItem)}
+	var newResults []ResultItem
 	var wg sync.WaitGroup
-	for index, sitem := range sItems {
+	for key := range groupedItems {
 		wg.Add(1)
 
-		go func(item ResultItem, i int) {
+		go func(k string) {
 			defer wg.Done()
-			itemModifier := ItemModifier{
-				SItems:        searchedItems,
-				Item:          &item,
-				Index:         i,
-				UserBasicInfo: esSearchReq.UserBasicInfo,
+
+			var ids []bson.ObjectId
+			for _, s := range groupedItems[k] {
+				if len(s.Item.IID) != 0 {
+					ids = append(ids, s.Item.IID)
+				}
+
+				switch s.Item.IndexName {
+				case "queries":
+					ids = append(ids, bson.ObjectIdHex(s.Item.QID))
+					protectedItem.Set(bson.ObjectIdHex(s.Item.QID), (*s.Item))
+				default:
+					protectedItem.Set(s.Item.IID, (*s.Item))
+				}
+
 			}
 
-			switch itemModifier.Item.IndexName {
-			case "datastore":
-				itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
-			default:
-				itemModifier.CollectionName = fmt.Sprintf("items_%v", itemModifier.Item.DID)
+			// for additional data
+			results, err := FindItemsInCollectionByIDS(k, ids...)
+			if err != nil {
+				return
+			}
+			for _, r := range results {
+				id := r["_id"].(bson.ObjectId)
+				updateObj := ResultItem{
+					IID:       id,
+					Value:     protectedItem.Get(id).Value,
+					DID:       protectedItem.Get(id).DID,
+					PID:       protectedItem.Get(id).PID,
+					IndexName: protectedItem.Get(id).IndexName,
+					TypeName:  protectedItem.Get(id).TypeName,
+				}
+				if title, exists := r["title"].(string); exists {
+					updateObj.Title = title
+				}
+
+				if pid, exists := r["p_id"].(string); exists {
+					updateObj.PID = pid
+				}
+
+				if pid, exists := r["project_id"].(string); exists {
+					updateObj.PID = pid
+				}
+
+				if qid, exists := r["q_id"].(string); exists {
+					updateObj.QID = qid
+				}
+
+				protectedItem.Set(id, updateObj)
+
 			}
 
-			var pg sync.WaitGroup
-			procFinders := []ItemMofifiersProc{
-				findItemByID,
-				findDatastoreByID,
-			}
-			for _, pf := range procFinders {
-				pg.Add(1)
-				go func(procFinder ItemMofifiersProc) {
-					defer pg.Done()
-
-					if err := procFinder(itemModifier); err != nil {
-						return
-					}
-				}(pf)
-			}
-			pg.Wait()
-		}(sitem, index)
+		}(key)
 	}
-
 	wg.Wait()
+
+	for _, item := range protectedItem.ObjectMapRes {
+		newResults = append(newResults, item)
+	}
+
+	(*searchedItems) = newResults
+	utils.Info(fmt.Sprintf("GetItemsByCollections took: %v", time.Since(s)))
 	return nil
 }
 
-func findDatastoreByID(itemModifier ItemModifier) error {
+// FindItemsInCollectionByIDS find items in collection by item ids
+func FindItemsInCollectionByIDS(collectionName string, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
+	if len(IDS) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	var res []map[string]interface{}
 	_, sc := database.BeginMongo()
-	c := sc.DB(database.Db).C(DatastoreCollection)
+	c := sc.DB(database.Db).C(collectionName)
 	defer sc.Close()
 
-	var ds Datastore
-	if err := c.Find(bson.M{"d_id": itemModifier.Item.DID}).One(&ds); err != nil {
-		utils.Error(fmt.Sprintf("error findDatastoreByID %v", err))
-		return err
+	if err := c.Find(bson.M{"_id": bson.M{"$in": IDS}}).All(&res); err != nil {
+		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
+		return res, err
 	}
-
-	(*itemModifier.SItems)[itemModifier.Index].PID = ds.ProjectID
-	(*itemModifier.SItems)[itemModifier.Index].DID = itemModifier.Item.DID
-	return nil
-}
-
-func findItemByID(itemModifier ItemModifier) error {
-	s, sc := database.BeginMongo()
-	colSettings := make(chan []map[string]interface{})
-	defer close(colSettings)
-	defer sc.Close()
-
-	go GetDatastoreColSettings(itemModifier.UserBasicInfo.ID, itemModifier.Item.DID, colSettings)
-
-	c := sc.DB(database.Db).C(itemModifier.CollectionName)
-	var rItem map[string]interface{}
-	if err := c.Find(bson.M{"_id": itemModifier.Item.IID, "access_keys": bson.M{"$in": itemModifier.UserBasicInfo.AccessKeys}}).One(&rItem); err != nil {
-		utils.Error(fmt.Sprintf("error find %v", err))
-		return nil
-	}
-
-	(*itemModifier.SItems)[itemModifier.Index].Item = rItem
-	(*itemModifier.SItems)[itemModifier.Index].Value = itemModifier.Item.Value
-
-	cols := <-colSettings
-	(*itemModifier.SItems)[itemModifier.Index].Title = ItemTitle(rItem, cols...)
-	(*itemModifier.SItems)[itemModifier.Index].ColSettings = colSettingsMap(cols)
-	_ = s
-	return nil
-}
-
-func colSettingsMap(colSettings []map[string]interface{}) map[string]interface{} {
-	colMap := make(map[string]interface{})
-
-	for _, col := range colSettings {
-		k := col["id"].(string)
-		colMap[k] = col
-	}
-
-	return colMap
-}
-
-// GetDatastoreColSettings get datastore column settings
-func GetDatastoreColSettings(userID, datastoreID string, colSets chan []map[string]interface{}) error {
-	s := time.Now()
-	var colSettings []map[string]interface{}
-
-	res := []struct {
-		ColumnSettings struct {
-			Data map[string]interface{} `json:"data"`
-		} `json:"column_settings"`
-	}{}
-
-	cypher := neoism.CypherQuery{
-		Statement: fmt.Sprintf(`
-			MATCH (%v {d_id:{datastoreID}})-[]->(%v)-[]->(%v)<-[:CAN_USE]-(%v)<-[:HAS]-(%v {u_id:{userID}})
-            RETURN DISTINCT f as column_settings
-			UNION
-			MATCH (%v {d_id:{datastoreID}})-[]->(%v)-[]->(%v)<-[:CAN_USE]-(gr:Role)<-[:HAS]-(pg:Group)-[:PARENT*0..]->(g:Group)<-[:HAS]-(%v {u_id:{userID}})
-            RETURN DISTINCT f as column_settings
-        `, DatastoreNode, DatastoreFields, FieldNodeLabel, RoleNodeLabel, UserNodeLabel,
-			DatastoreNode, DatastoreFields, FieldNodeLabel, UserNodeLabel),
-		Parameters: neoism.Props{"datastoreID": datastoreID, "userID": userID},
-		Result:     &res,
-	}
-	if err := database.ExecuteCypherQuery(cypher); err != nil {
-		utils.Error(fmt.Sprintf("error GetDatastoreColSettings %v", err))
-		colSets <- colSettings
-		return err
-	}
-
-	for _, i := range res {
-		colSettings = append(colSettings, i.ColumnSettings.Data)
-	}
-
-	colSets <- colSettings
-	utils.Info(fmt.Sprintf("GetDatastoreColSettings took: %v", time.Since(s)))
-	return nil
-}
-
-// ItemTitle extract item ttiles
-func ItemTitle(item map[string]interface{}, columnSettings ...map[string]interface{}) string {
-	var titles []map[string]interface{}
-	for _, item := range columnSettings {
-		if value, exists := item["as_title"].(bool); exists && value {
-			titles = append(titles, map[string]interface{}{
-				"columnID":           item["id"].(string),
-				"title_order_number": item["title_order"].(string),
-			})
-		}
-	}
-
-	titleBuilt := make([]string, len(titles))
-	for _, t := range titles {
-		val := item[t["columnID"].(string)]
-		if index, err := strconv.Atoi(t["title_order_number"].(string)); err == nil {
-			// TODO ADD ERR HANDLER IF OUT OF RANGE -JP
-			titleBuilt[index-1] = fmt.Sprintf("%v", val)
-		}
-	}
-	return strings.Join(titleBuilt, " ")
+	return res, nil
 }
