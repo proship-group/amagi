@@ -375,7 +375,6 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 			if err != nil {
 				return
 			}
-			fmt.Println("results len", len(results))
 			for _, r := range results {
 				id := r["_id"].(bson.ObjectId)
 				updateObj := ResultItem{
