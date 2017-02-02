@@ -55,6 +55,8 @@ type (
 
 		UserID        string
 		UserBasicInfo UserBasicInfo
+
+		UpdateChanges map[string]interface{}
 	}
 
 	// UserBasicInfo user basic info
@@ -82,6 +84,7 @@ type (
 		DID   string `bson:"d_id" json:"d_id"`
 		FID   string `bson:"f_id" json:"f_id"`
 		PID   string `bson:"p_id" json:"p_id"`
+		WID   string `bson:"w_id" json:"w_id"`
 		Index string `json:"index"`
 		Value string `bson:"value" json:"value"`
 	}
@@ -192,8 +195,39 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v", time.Since(s)))
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v index=%v", time.Since(s), indexName))
 	return nil
+}
+
+// ESDeleteDocument delete document
+func (req *ESSearchReq) ESDeleteDocument() error {
+	del := elastic.NewMatchQuery("i_id", req.BodyJSON.(DistinctItem).IID)
+
+	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
+		// for multiple index search query, pass in slice of string
+		Index(strings.Split(req.IndexName, ",")...).
+		Query(del).
+		Do(CreateContext())
+	if err != nil {
+		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
+		return err
+	}
+
+	fmt.Println("deleted: ", res.Deleted)
+	if res.Deleted == 0 {
+		return fmt.Errorf("deleted: %v", res.Deleted)
+	}
+
+	return nil
+}
+
+// ESUpdateDocument update elasticSearch document
+func (req *ESSearchReq) ESUpdateDocument() error {
+
+	// TODO handle in switch instead
+	// req.ESHTTPItemUpdate()
+	return nil
+
 }
 
 // ESTermQuery new term query
@@ -205,14 +239,12 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 
 	joinedText := buildRegexpString(req.SearchValues)
 	regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
-		Boost(1.2).
-		Flags("INTERSECTION|COMPLEMENT|EMPTY")
+		Boost(1.2)
 
-	fmt.Println(regexpQuery, "======= query")
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
 		Query(regexpQuery).
-		From(0).Size(1000).
+		From(0).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -222,15 +254,39 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 	return searchResult, nil
 }
 
+// ESBulkDeleteDocuments bulk delete elasticsearch document
+func ESBulkDeleteDocuments(requests ...ESSearchReq) error {
+	for _, req := range requests {
+		if err := req.ESDeleteDocument(); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+// ESBulkAddDocuments bulk delete elasticsearch document
+func ESBulkAddDocuments(requests ...ESSearchReq) error {
+	for _, req := range requests {
+		if err := req.ESAddDocument(); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
 func buildRegexpString(str interface{}) string {
 	var st []string
 	for _, t := range strings.Split(fmt.Sprintf("%v", str), " ") {
 
 		// regexps
+		st = append(st, fmt.Sprintf("%v", t))
 		st = append(st, fmt.Sprintf("%v.*", t))
 		st = append(st, fmt.Sprintf("*.%v", t))
-		st = append(st, fmt.Sprintf("%v", t))
-		st = append(st, fmt.Sprintf("[%v]", t))
+		st = append(st, fmt.Sprintf("(%v)", t))
+		// st = append(st, fmt.Sprintf("%v", t))
+		// st = append(st, fmt.Sprintf("[%v]", t))
 	}
 
 	return strings.Join(st, "|")
@@ -356,10 +412,9 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 
 			var ids []bson.ObjectId
 			for _, s := range groupedItems[k] {
-				if len(s.Item.IID) != 0 {
+				if len(s.Item.IID) != 0 && s.Item.IndexName != "queries" {
 					ids = append(ids, s.Item.IID)
 				}
-
 				switch s.Item.IndexName {
 				case "queries":
 					ids = append(ids, bson.ObjectIdHex(s.Item.QID))
