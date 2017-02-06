@@ -231,15 +231,23 @@ func (req *ESSearchReq) ESUpdateDocument() error {
 }
 
 // ESTermQuery new term query
+// manual settings for setting default tokenizer for kuromoji
+// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_close'
+// $ curl -u elastic -XPUT 'http://104.198.115.53:9400/datastore/_settings?preserve_existing=true' -d '{   "index.analysis.analyzer.default.tokenizer" : "kuromoji",   "index.analysis.analyzer.default.type" : "custom" }'
+// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_open'
 func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
 	// termQuery := elastic.NewTermQuery(req.SearchField, req.SearchValues)
 	hl := elastic.NewHighlight().
 		Fields(elastic.NewHighlighterField(req.SearchField)).
 		PreTags("<em class='searched_em'>").PostTags("</em")
 
-	joinedText := buildRegexpString(req.SearchValues)
-	regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
-		Boost(1.2)
+	// joinedText := buildRegexpString(req.SearchValues)
+	// regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
+	// 	Boost(1.2).
+
+	regexpQuery := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
+		Field(req.SearchField).
+		Analyzer("kuromoji")
 
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
