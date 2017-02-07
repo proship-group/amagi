@@ -242,16 +242,17 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		PreTags("<em class='searched_em'>").PostTags("</em")
 
 	// joinedText := buildRegexpString(req.SearchValues)
-	// regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
-	// 	Boost(1.2).
+	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
+	// 	Boost(1.2).Analyzer("analyzer")
 
-	regexpQuery := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
 		Field(req.SearchField).
-		Analyzer("kuromoji")
+		Analyzer("kuromoji").
+		Flags("OR|AND|PREFIX")
 
 	searchResult, err := database.ESGetConn().Search().
 		Highlight(hl).
-		Query(regexpQuery).
+		Query(query).
 		From(0).
 		Do(CreateContext())
 	if err != nil {
