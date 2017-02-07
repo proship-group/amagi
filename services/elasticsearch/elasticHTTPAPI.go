@@ -57,6 +57,14 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 	return nil
 }
 
+// ESFileAttachIndex file attach index using elasticsearch HTTP API instead
+// http://stackoverflow.com/a/40334033/1175415
+func ESFileAttachIndex() error {
+
+	return nil
+}
+
+// ESReqHTTPPost basic es request http post
 func ESReqHTTPPost(index, apiname string, query []byte) error {
 	esUrl := ESURL(index, apiname)
 
