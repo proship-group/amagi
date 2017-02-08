@@ -60,13 +60,13 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 
 // ESFileAttachIndex file attach index using elasticsearch HTTP API instead
 // http://stackoverflow.com/a/40334033/1175415
-func ESFileAttachIndex(fileBase64 string) error {
+func (req *ESSearchReq) ESFileAttachIndex() error {
 	s := time.Now()
 	if err := createIngestPipeline(); err != nil {
 		return err
 	}
 
-	if err := putFileIngestAttachment(fileBase64); err != nil {
+	if err := putFileIngestAttachment(req.BodyJSON.(DistinctItem).IID, req.FileBase64); err != nil {
 		return err
 	}
 
@@ -74,13 +74,14 @@ func ESFileAttachIndex(fileBase64 string) error {
 	return nil
 }
 
-func putFileIngestAttachment(fileBase64 string) error {
+func putFileIngestAttachment(itemID string, fileBase64 string) error {
 	query := fmt.Sprintf(`
 		{
-			"data": "%v"
+			"data": "%v",
+			"i_id": "itemID",
 		}	
 	`, fileBase64)
-	if err := ESReqHTTPPut("datastore/file/my_id?pipeline=attachment", []byte(query)); err != nil {
+	if err := ESReqHTTPPut(fmt.Sprintf("datastore/file/%v?pipeline=attachment", itemID), []byte(query)); err != nil {
 		return err
 	}
 
