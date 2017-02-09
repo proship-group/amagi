@@ -335,6 +335,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		// original searched item before reflect
 		searchItem := result.Hits.Hits[index]
 		indexName := result.Hits.Hits[index].Index
+		typeName := result.Hits.Hits[index].Type
 
 		if t, ok := id.(DistinctItem); ok {
 			resultItem := ResultItem{
@@ -344,6 +345,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 				QID:       t.QID,
 				Order:     index,
 				IndexName: indexName,
+				TypeName:  typeName,
 				MaxScore:  (*searchItem.Score),
 			}
 

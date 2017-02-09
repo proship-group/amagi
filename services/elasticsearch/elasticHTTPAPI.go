@@ -58,6 +58,7 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 	return nil
 }
 
+
 // ESFileAttachIndex file attach index using elasticsearch HTTP API instead
 // http://stackoverflow.com/a/40334033/1175415
 func (req *ESSearchReq) ESFileAttachIndex() error {
@@ -66,7 +67,7 @@ func (req *ESSearchReq) ESFileAttachIndex() error {
 		return err
 	}
 
-	if err := putFileIngestAttachment(req.BodyJSON.(DistinctItem).IID, req.FileBase64); err != nil {
+	if err := putFileIngestAttachment(req.BodyJSON.(DistinctItem), req.FileBase64); err != nil {
 		return err
 	}
 
@@ -74,14 +75,18 @@ func (req *ESSearchReq) ESFileAttachIndex() error {
 	return nil
 }
 
-func putFileIngestAttachment(itemID string, fileBase64 string) error {
+func putFileIngestAttachment(item DistinctItem, fileBase64 string) error {
 	query := fmt.Sprintf(`
 		{
 			"data": "%v",
-			"i_id": "itemID",
+			"i_id": "%v",
+			"d_id": "%v",
+			"w_id": "%v",
+			"p_id": "%v"
 		}	
-	`, fileBase64)
-	if err := ESReqHTTPPut(fmt.Sprintf("datastore/file/%v?pipeline=attachment", itemID), []byte(query)); err != nil {
+	`, fileBase64, item.IID, item.DID, item.WID, item.PID)
+
+	if err := ESReqHTTPPut(fmt.Sprintf("datastore/file/%v?pipeline=attachment", item.IID), []byte(query)); err != nil {
 		return err
 	}
 
@@ -94,10 +99,12 @@ func createIngestPipeline() error {
 			"description" : "Extract attachment information",
 			"processors" : [
 					{
-					"attachment" : {
-						"field" : "data"
+						"attachment" : 
+							{
+								"field" : "data",
+								"indexed_chars": -1
+						}
 					}
-				}
 			]
 		}	
 	`)
@@ -114,7 +121,7 @@ func ESReqHTTPPut(api string, query []byte) error {
 	esURL := esURLWoIndex(api)
 	utils.Info(fmt.Sprintf("ESreqHTTPPut url %v", esURL))
 	client := &http.Client{
-		Timeout: time.Duration(5 * time.Second),
+		Timeout: time.Duration(60 * time.Second),
 	}
 	req, err := http.NewRequest("PUT", esURL, bytes.NewBuffer(query))
 	if err != nil {
@@ -128,6 +135,15 @@ func ESReqHTTPPut(api string, query []byte) error {
 		return err
 	}
 	defer resp.Body.Close()
+	utils.Info(fmt.Sprintf("ESREqHTTPPut for %v code=%v", api, resp.StatusCode))
+	if resp.StatusCode == 400 {
+		fmt.Println(resp)
+		var r interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+
+		}
+		fmt.Println(r)
+	}
 
 	var r map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
