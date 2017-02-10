@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/b-eee/amagi/services/configctl"
+	"github.com/b-eee/amagi/services/database"
 
 	utils "github.com/b-eee/amagi"
 )
@@ -57,7 +58,6 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 
 	return nil
 }
-
 
 // ESFileAttachIndex file attach index using elasticsearch HTTP API instead
 // http://stackoverflow.com/a/40334033/1175415
@@ -128,7 +128,9 @@ func ESReqHTTPPut(api string, query []byte) error {
 		utils.Error(fmt.Sprintf("error ESReqHTTPPut %v", err))
 		return err
 	}
-	req.SetBasicAuth("elastic", "changeme")
+
+	conf := database.GetESConfigs()
+	req.SetBasicAuth(conf.Username, conf.Password)
 	resp, err := client.Do(req)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error on client.Do ESReqHTTPPut %v", err))
@@ -179,6 +181,28 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 		return fmt.Errorf("updated failed updated=%v", r.Updated)
 	}
 
+	return nil
+}
+
+// ESReqHTTPDelete delete item by path and ID
+func ESReqHTTPDelete(path string) error {
+	esURL := esURL(path, "")
+
+	utils.Info(fmt.Sprintf("sending post to %v", esURL))
+
+	req, err := http.NewRequest("DELETE", esURL, bytes.NewBuffer([]byte("")))
+	req.Header.Set("Content-Type", "application/json")
+
+	conf := database.GetESConfigs()
+	req.SetBasicAuth(conf.Username, conf.Password)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	utils.Info(fmt.Sprintf("ESReqHTTPDelete status=%v", resp.StatusCode))
 	return nil
 }
 
