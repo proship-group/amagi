@@ -44,6 +44,7 @@ func StartNSQ(conf MSGBackendConfig) error {
 	config.Set("LookupdPollJitter", 0)
 	config.Set("Snappy", true)
 
+	utils.Info(fmt.Sprintf("nsq host=%v", config.Hostname))
 	if err := NSQCreateProducer(conf, NSQSetConfigConn(config)); err != nil {
 		return err
 	}

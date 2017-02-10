@@ -27,7 +27,8 @@ func StartElasticSearch() error {
 
 	client, err := elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
 		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
-		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)))
+		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
+		elastic.SetBasicAuth("elastic", "changeme"))
 	if err != nil {
 
 		utils.Fatal(fmt.Sprintf("error StartElasticSearch %v", err))
