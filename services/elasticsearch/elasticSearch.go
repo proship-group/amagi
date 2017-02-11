@@ -41,10 +41,11 @@ var (
 type (
 	// ESSearchReq elasticsearch search request
 	ESSearchReq struct {
-		IndexName string
-		Type      string
-		Context   context.Context
-		BodyJSON  interface{}
+		IndexName  string
+		Type       string
+		Context    context.Context
+		BodyJSON   interface{}
+		FileBase64 string
 
 		SearchName   string
 		SearchField  string
@@ -87,6 +88,10 @@ type (
 		WID   string `bson:"w_id" json:"w_id"`
 		Index string `json:"index"`
 		Value string `bson:"value" json:"value"`
+
+		Attachment struct {
+			Content interface{} `json:"content,omitempty"`
+		} `json:"attachment,omitempty"`
 	}
 
 	// ResultItem result item from mongodb
@@ -230,20 +235,28 @@ func (req *ESSearchReq) ESUpdateDocument() error {
 
 }
 
-// ESTermQuery new term query
-func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
-	// termQuery := elastic.NewTermQuery(req.SearchField, req.SearchValues)
-	hl := elastic.NewHighlight().
-		Fields(elastic.NewHighlighterField(req.SearchField)).
-		PreTags("<em class='searched_em'>").PostTags("</em")
+type concurrentSearch struct {
+	Query elastic.Query
+	Field string
+}
 
-	joinedText := buildRegexpString(req.SearchValues)
-	regexpQuery := elastic.NewRegexpQuery(req.SearchField, joinedText).
-		Boost(1.2)
+// ESTermQuery new term query
+// manual settings for setting default tokenizer for kuromoji
+// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_close'
+// $ curl -u elastic -XPUT 'http://104.198.115.53:9400/datastore/_settings?preserve_existing=true' -d '{   "index.analysis.analyzer.default.tokenizer" : "kuromoji",   "index.analysis.analyzer.default.type" : "custom" }'
+// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_open'
+func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
+	// joinedText := buildRegexpString(req.SearchValues)
+	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
+	// 	Boost(1.2).Analyzer("analyzer")
+
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
+		Analyzer("kuromoji").
+		Flags("OR|AND|PREFIX")
 
 	searchResult, err := database.ESGetConn().Search().
-		Highlight(hl).
-		Query(regexpQuery).
+		Highlight(ResultHighlighter(req.SearchField)).
+		Query(query).
 		From(0).
 		Do(CreateContext())
 	if err != nil {
@@ -252,6 +265,14 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 
 	utils.Info(fmt.Sprintf("ESTermQuery took: %v ms hits: %v", searchResult.TookInMillis, searchResult.Hits.TotalHits))
 	return searchResult, nil
+}
+
+// ResultHighlighter create result highlighter
+func ResultHighlighter(field string) *elastic.Highlight {
+	return elastic.NewHighlight().
+		Fields(elastic.NewHighlighterField(field)).
+		PreTags("<em class='searched_em'>").PostTags("</em")
+
 }
 
 // ESBulkDeleteDocuments bulk delete elasticsearch document
@@ -314,6 +335,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		// original searched item before reflect
 		searchItem := result.Hits.Hits[index]
 		indexName := result.Hits.Hits[index].Index
+		typeName := result.Hits.Hits[index].Type
 
 		if t, ok := id.(DistinctItem); ok {
 			resultItem := ResultItem{
@@ -323,6 +345,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 				QID:       t.QID,
 				Order:     index,
 				IndexName: indexName,
+				TypeName:  typeName,
 				MaxScore:  (*searchItem.Score),
 			}
 
