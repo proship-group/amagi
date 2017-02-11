@@ -19,7 +19,6 @@ var (
 // StartElasticSearch start elasticsearch connections
 func StartElasticSearch() error {
 	env := configctl.GetDBCfgStngWEnvName("elasticsearch", os.Getenv("ENV"))
-	fmt.Println(env)
 
 	esURL := env.Host
 
@@ -27,7 +26,8 @@ func StartElasticSearch() error {
 
 	client, err := elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
 		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
-		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)))
+		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
+		elastic.SetBasicAuth(env.Username, env.Password))
 	if err != nil {
 
 		utils.Fatal(fmt.Sprintf("error StartElasticSearch %v", err))
@@ -42,6 +42,10 @@ func StartElasticSearch() error {
 
 // ESGetConn get elasticsearch connection
 func ESGetConn() *elastic.Client {
-
 	return ESConn
+}
+
+// GetESConfigs get elasticsearch configs
+func GetESConfigs() configctl.Environment {
+	return configctl.GetDBCfgStngWEnvName("elasticsearch", os.Getenv("ENV"))
 }
