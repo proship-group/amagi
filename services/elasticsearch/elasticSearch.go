@@ -251,7 +251,7 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
 	// 	Boost(1.2).Analyzer("analyzer")
 
-	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).Field("value").AnalyzeWildcard(true).Analyzer("kuromoji")
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).Field("value").Field("attachment.content").AnalyzeWildcard(true).Analyzer("kuromoji")
 
 	searchResult, err := database.ESGetConn().Search().
 		Index("_all").
@@ -520,17 +520,18 @@ func FindItemsInCollectionByIDS(collectionName string, userBasicInfo UserBasicIn
 	// }},
 	// {"$unwind": "$pinned"},
 	// {"$match": {"pinned.u_id": "587df90c6aeb5868306d8400"}}
-	query := []bson.M{
-		{"$match": bson.M{"_id": bson.M{"$in": IDS}, "access_keys": bson.M{"$in": userBasicInfo.AccessKeys}}},
-		{"$lookup": bson.M{
-			"from":         "tiles",
-			"localField":   "i_id",
-			"foreignField": "i_id",
-			"as":           "pinned",
-		}},
-		// {"$unwind": "$pinned"},
-		// {"$match": bson.M{"pinned.u_id": userBasicInfo.ID}},
-	}
+	query := []bson.M{}
+	match := bson.M{"$match": bson.M{"_id": bson.M{"$in": IDS}, "access_keys": bson.M{"$in": userBasicInfo.AccessKeys}}}
+
+	query = append(query, match)
+
+	lookup := bson.M{"$lookup": bson.M{
+		"from":         "tiles",
+		"localField":   determineLocalField(collectionName),
+		"foreignField": "i_id",
+		"as":           "pinned",
+	}}
+	query = append(query, lookup)
 
 	if err := c.Pipe(query).AllowDiskUse().All(&res); err != nil {
 		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
@@ -553,4 +554,15 @@ func itemIsPinned(item map[string]interface{}) bool {
 	}
 
 	return itemIsPinned
+}
+
+func determineLocalField(collection string) string {
+	localField := "i_id"
+
+	switch collection {
+	case "queries":
+		localField = "q_id"
+	}
+
+	return localField
 }
