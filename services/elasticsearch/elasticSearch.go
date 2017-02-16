@@ -251,12 +251,14 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
 	// 	Boost(1.2).Analyzer("analyzer")
 
-	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues))
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).Field("value").AnalyzeWildcard(true).Analyzer("kuromoji")
 
-	searchResult, err := database.ESGetConn().Search([]string{"queries", "datastore"}...).
+	searchResult, err := database.ESGetConn().Search().
+		Index("_all").
 		Highlight(ResultHighlighter(req.SearchField)).
 		Query(query).
 		From(0).
+		Size(50).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -270,8 +272,7 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 func ResultHighlighter(field string) *elastic.Highlight {
 	return elastic.NewHighlight().
 		Fields(elastic.NewHighlighterField(field)).
-		PreTags("<em class='searched_em'>").PostTags("</em")
-
+		PreTags("<em class='searched_em'>").PostTags("</em>")
 }
 
 // ESBulkDeleteDocuments bulk delete elasticsearch document
@@ -336,8 +337,8 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		indexName := result.Hits.Hits[index].Index
 		typeName := result.Hits.Hits[index].Type
 
-		fmt.Println(typeName, indexName, "--------------------------------------------------------")
 		if t, ok := id.(DistinctItem); ok {
+
 			resultItem := ResultItem{
 				DID:       t.DID,
 				FID:       t.FID,
@@ -412,9 +413,9 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 		case "datastore", "histories":
 			collection := fmt.Sprintf("items_%v", itemModifier.Item.DID)
 
-			if len(groupedItems[collection]) == 0 {
-				groupedItems[collection] = []ItemModifier{}
-			}
+			// if len(groupedItems[collection]) == 0 {
+			// 	groupedItems[collection] = []ItemModifier{}
+			// }
 			groupedItems[collection] = append(groupedItems[collection], itemModifier)
 		case "queries":
 			collection := "queries"
@@ -449,7 +450,7 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 			}
 
 			// for additional data
-			results, err := FindItemsInCollectionByIDS(k, esSearchReq.UserBasicInfo.ID, ids...)
+			results, err := FindItemsInCollectionByIDS(k, esSearchReq.UserBasicInfo, ids...)
 			if err != nil {
 				return
 			}
@@ -463,6 +464,7 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 					IndexName: protectedItem.Get(id).IndexName,
 					TypeName:  protectedItem.Get(id).TypeName,
 					Pinned:    itemIsPinned(r),
+					Title:     protectedItem.Get(id).Title,
 				}
 
 				if title, exists := r["title"].(string); exists {
@@ -499,7 +501,7 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 }
 
 // FindItemsInCollectionByIDS find items in collection by item ids
-func FindItemsInCollectionByIDS(collectionName, UID string, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
+func FindItemsInCollectionByIDS(collectionName string, userBasicInfo UserBasicInfo, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
 	if len(IDS) == 0 {
 		return []map[string]interface{}{}, nil
 	}
@@ -519,40 +521,35 @@ func FindItemsInCollectionByIDS(collectionName, UID string, IDS ...bson.ObjectId
 	// {"$unwind": "$pinned"},
 	// {"$match": {"pinned.u_id": "587df90c6aeb5868306d8400"}}
 	query := []bson.M{
-		{"$match": bson.M{"_id": bson.M{"$in": IDS}}},
+		{"$match": bson.M{"_id": bson.M{"$in": IDS}, "access_keys": bson.M{"$in": userBasicInfo.AccessKeys}}},
 		{"$lookup": bson.M{
 			"from":         "tiles",
 			"localField":   "i_id",
 			"foreignField": "i_id",
 			"as":           "pinned",
 		}},
-		{"$unwind": "$pinned"},
-		{"$match": bson.M{"pinned.u_id": UID}},
+		// {"$unwind": "$pinned"},
+		// {"$match": bson.M{"pinned.u_id": userBasicInfo.ID}},
 	}
 
 	if err := c.Pipe(query).AllowDiskUse().All(&res); err != nil {
 		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
 		return nil, err
 	}
-	// for _, i := range res {
-	// 	if pinned, k := i["pinned"]; k {
-	// 		pinnedMap := pinned.(map[string]interface{})
-	// 		fmt.Println(pinnedMap["pinned"], "=======================================")
-	// 	}
-	// }
 
-	// if err := c.Find(bson.M{"_id": bson.M{"$in": IDS}}).All(&res); err != nil {
-	// 	utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
-	// 	return res, err
-	// }
 	return res, nil
 }
 
 func itemIsPinned(item map[string]interface{}) bool {
 	itemIsPinned := false
 	if pinned, ok := item["pinned"]; ok {
-		pinnedMap := pinned.(map[string]interface{})
-		itemIsPinned = pinnedMap["pinned"].(bool)
+		// retrieve first pin
+		tiles := pinned.([]interface{})
+		if len(tiles) > 0 {
+			pinnedMap := tiles[0].(map[string]interface{})
+			itemIsPinned = pinnedMap["pinned"].(bool)
+
+		}
 	}
 
 	return itemIsPinned
