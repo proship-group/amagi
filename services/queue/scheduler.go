@@ -2,6 +2,9 @@ package queue
 
 import (
 	"fmt"
+	"opsManager/lib/task"
+	"os"
+	"strconv"
 	"time"
 
 	utils "github.com/b-eee/amagi"
@@ -29,6 +32,16 @@ func (s *Scheduler) Tasks(task ...Task) *Scheduler {
 	s.TaskHandlers = append(s.TaskHandlers, task...)
 
 	return s
+}
+
+// LoopDuration loop duration getter from ENV
+func LoopDuration(envName string) time.Duration {
+	defaultLoopDuration := 60 * task.MinutesMultiplier
+	if val, err := strconv.Atoi(os.Getenv(envName)); err == nil {
+		return time.Duration(val) * task.MinutesMultiplier
+	}
+
+	return defaultLoopDuration
 }
 
 // Do do scheduler task
