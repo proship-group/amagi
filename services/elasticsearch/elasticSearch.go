@@ -110,6 +110,7 @@ type (
 		Value       string                 `json:"value"`
 		Item        interface{}            `json:"item"`
 		Title       string                 `json:"title"`
+		Pinned      bool                   `json:"pinned"`
 	}
 
 	// Datastore datastore struct for mgo
@@ -250,14 +251,14 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
 	// 	Boost(1.2).Analyzer("analyzer")
 
-	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
-		Analyzer("kuromoji").
-		Flags("OR|AND|PREFIX")
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).Field("value").Field("attachment.content").AnalyzeWildcard(true).Analyzer("kuromoji")
 
 	searchResult, err := database.ESGetConn().Search().
+		Index("_all").
 		Highlight(ResultHighlighter(req.SearchField)).
 		Query(query).
 		From(0).
+		Size(50).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
@@ -271,8 +272,7 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 func ResultHighlighter(field string) *elastic.Highlight {
 	return elastic.NewHighlight().
 		Fields(elastic.NewHighlighterField(field)).
-		PreTags("<em class='searched_em'>").PostTags("</em")
-
+		PreTags("<em class='searched_em'>").PostTags("</em>")
 }
 
 // ESBulkDeleteDocuments bulk delete elasticsearch document
@@ -338,6 +338,7 @@ func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]Resu
 		typeName := result.Hits.Hits[index].Type
 
 		if t, ok := id.(DistinctItem); ok {
+
 			resultItem := ResultItem{
 				DID:       t.DID,
 				FID:       t.FID,
@@ -412,9 +413,9 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 		case "datastore", "histories":
 			collection := fmt.Sprintf("items_%v", itemModifier.Item.DID)
 
-			if len(groupedItems[collection]) == 0 {
-				groupedItems[collection] = []ItemModifier{}
-			}
+			// if len(groupedItems[collection]) == 0 {
+			// 	groupedItems[collection] = []ItemModifier{}
+			// }
 			groupedItems[collection] = append(groupedItems[collection], itemModifier)
 		case "queries":
 			collection := "queries"
@@ -449,7 +450,7 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 			}
 
 			// for additional data
-			results, err := FindItemsInCollectionByIDS(k, ids...)
+			results, err := FindItemsInCollectionByIDS(k, esSearchReq.UserBasicInfo, ids...)
 			if err != nil {
 				return
 			}
@@ -462,7 +463,10 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 					PID:       protectedItem.Get(id).PID,
 					IndexName: protectedItem.Get(id).IndexName,
 					TypeName:  protectedItem.Get(id).TypeName,
+					Pinned:    itemIsPinned(r),
+					Title:     protectedItem.Get(id).Title,
 				}
+
 				if title, exists := r["title"].(string); exists {
 					updateObj.Title = title
 				}
@@ -497,7 +501,7 @@ func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq)
 }
 
 // FindItemsInCollectionByIDS find items in collection by item ids
-func FindItemsInCollectionByIDS(collectionName string, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
+func FindItemsInCollectionByIDS(collectionName string, userBasicInfo UserBasicInfo, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
 	if len(IDS) == 0 {
 		return []map[string]interface{}{}, nil
 	}
@@ -507,9 +511,58 @@ func FindItemsInCollectionByIDS(collectionName string, IDS ...bson.ObjectId) ([]
 	c := sc.DB(database.Db).C(collectionName)
 	defer sc.Close()
 
-	if err := c.Find(bson.M{"_id": bson.M{"$in": IDS}}).All(&res); err != nil {
+	// {"$match": {"_id": {"$in": [ObjectId("589da05d6aeb58dfe0877f48"), ObjectId("589da05d6aeb58dfe0877b48")]}}},
+	// {"$lookup": {
+	//     "from": "tiles",
+	//     "localField": "i_id",
+	//     "foreignField": "i_id",
+	//     "as": "pinned"
+	// }},
+	// {"$unwind": "$pinned"},
+	// {"$match": {"pinned.u_id": "587df90c6aeb5868306d8400"}}
+	query := []bson.M{}
+	match := bson.M{"$match": bson.M{"_id": bson.M{"$in": IDS}, "access_keys": bson.M{"$in": userBasicInfo.AccessKeys}}}
+
+	query = append(query, match)
+
+	lookup := bson.M{"$lookup": bson.M{
+		"from":         "tiles",
+		"localField":   determineLocalField(collectionName),
+		"foreignField": "i_id",
+		"as":           "pinned",
+	}}
+	query = append(query, lookup)
+
+	if err := c.Pipe(query).AllowDiskUse().All(&res); err != nil {
 		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
-		return res, err
+		return nil, err
 	}
+
 	return res, nil
+}
+
+func itemIsPinned(item map[string]interface{}) bool {
+	itemIsPinned := false
+	if pinned, ok := item["pinned"]; ok {
+		// retrieve first pin
+		tiles := pinned.([]interface{})
+		if len(tiles) > 0 {
+			pinnedMap := tiles[0].(map[string]interface{})
+			itemIsPinned = pinnedMap["pinned"].(bool)
+
+		}
+	}
+
+	return itemIsPinned
+}
+
+func determineLocalField(collection string) string {
+	localField := "i_id"
+
+	switch collection {
+	case "queries":
+		localField = "q_id"
+	}
+
+	return localField
 }
