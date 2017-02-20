@@ -36,7 +36,7 @@ func (s *Scheduler) Tasks(task ...Task) *Scheduler {
 
 // LoopDuration loop duration getter from ENV
 func LoopDuration(envName string) time.Duration {
-	defaultLoopDuration := 60 * task.MinutesMultiplier
+	defaultLoopDuration := 60 * task.SecondsMultiplier
 	if val, err := strconv.Atoi(os.Getenv(envName)); err == nil {
 		return time.Duration(val) * task.MinutesMultiplier
 	}
