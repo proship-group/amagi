@@ -59,6 +59,22 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 	return nil
 }
 
+// ESDeleteHTTPByQuery es delete http api
+func (req *ESSearchReq) ESDeleteHTTPByQuery(query map[string]interface{}) error {
+
+	str, err := json.Marshal(query)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error ESDeleteHTTPByQuery json marshal %v", err))
+		return err
+	}
+
+	if err := ESReqHTTPPost(req.IndexName, "_delete_by_query", str); err != nil {
+		// TODO error handling -jp
+	}
+
+	return nil
+}
+
 // ESFileAttachIndex file attach index using elasticsearch HTTP API instead
 // http://stackoverflow.com/a/40334033/1175415
 func (req *ESSearchReq) ESFileAttachIndex() error {
@@ -139,12 +155,10 @@ func ESReqHTTPPut(api string, query []byte) error {
 	defer resp.Body.Close()
 	utils.Info(fmt.Sprintf("ESREqHTTPPut for %v code=%v", api, resp.StatusCode))
 	if resp.StatusCode == 400 {
-		fmt.Println(resp)
 		var r interface{}
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 
 		}
-		fmt.Println(r)
 	}
 
 	var r map[string]interface{}
@@ -156,6 +170,7 @@ func ESReqHTTPPut(api string, query []byte) error {
 
 // ESReqHTTPPost basic es request http post
 func ESReqHTTPPost(index, apiname string, query []byte) error {
+	s := time.Now()
 	esURL := esURL(index, apiname)
 
 	utils.Info(fmt.Sprintf("sending post to %v", esURL))
@@ -163,6 +178,8 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	req, err := http.NewRequest("POST", esURL, bytes.NewBuffer(query))
 	req.Header.Set("Content-Type", "application/json")
 
+	conf := database.GetESConfigs()
+	req.SetBasicAuth(conf.Username, conf.Password)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -172,7 +189,9 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 
 	r := struct {
 		Updated float64 `json:"updated"`
+		Deleted float64 `json:"deleted"`
 	}{}
+
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		panic(err)
 	}
@@ -181,6 +200,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 		return fmt.Errorf("updated failed updated=%v", r.Updated)
 	}
 
+	utils.Info(fmt.Sprintf("ESReqHTTPPost took: %v updated: %v deleted: %v", time.Since(s), r.Updated, r.Deleted))
 	return nil
 }
 
