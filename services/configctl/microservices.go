@@ -38,3 +38,17 @@ func ConfCtLProtocol(env string) string {
 
 	return protocol
 }
+
+// ImporterURL importer URL
+func ImporterURL(port int) string {
+	var importerURL string
+	switch os.Getenv("ENV") {
+	case "local":
+		importerURL = fmt.Sprintf("localhost:%v", port)
+	case "docker":
+		importerURL = fmt.Sprintf("importer:%v", port)
+	default:
+		importerURL = fmt.Sprintf("beee-importer:%v", port)
+	}
+	return importerURL
+}
