@@ -2,11 +2,12 @@ package database
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
 
 	utils "github.com/b-eee/amagi"
 	config "github.com/b-eee/amagi/services/configctl"
@@ -29,9 +30,8 @@ func OpenMssqlConn() *gorm.DB {
 	defer utils.ExceptionDump()
 
 	s := time.Now()
-	utils.Info(fmt.Sprintf("connecting to MySQL.. %v", connStr()))
-	//fmt.Println(connStr())
-	db, err := gorm.Open("mysql", connStr())
+	utils.Info(fmt.Sprintf("connecting to MySQL.. %v", ConnStr()))
+	db, err := gorm.Open("mysql", ConnStr())
 	if err != nil {
 		utils.Error(fmt.Sprintf("failed to connect database"))
 		// TODO panic if connection failed!!
@@ -55,6 +55,7 @@ func OpenMssqlConn() *gorm.DB {
 }
 
 // StartGormMssql start gorm mysql connection
+// TODO RENAME TO SQL -JP
 func StartGormMssql(initializeTable func(sqlDB *gorm.DB)) {
 	defer utils.ExceptionDump()
 
@@ -101,7 +102,8 @@ func startMysql() {
 	utils.Info("start mysql")
 }
 
-func connStr() string {
+// ConnStr construct sql connection string
+func ConnStr() string {
 	return buildMySQLConnStr()
 }
 
