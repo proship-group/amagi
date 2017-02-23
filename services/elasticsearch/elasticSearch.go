@@ -86,6 +86,7 @@ type (
 		FID   string `bson:"f_id" json:"f_id"`
 		PID   string `bson:"p_id" json:"p_id"`
 		WID   string `bson:"w_id" json:"w_id"`
+		AID   string `bson:"a_id" json:"a_id"`
 		Index string `json:"index"`
 		Value string `bson:"value" json:"value"`
 
@@ -322,11 +323,11 @@ func CreateContext() context.Context {
 func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]ResultItem, error) {
 	s := time.Now()
 	// TODO DEPRECATE WHEN SESSION UNIFIED -JP
-	database.MongodbStart()
-	database.StartNeo4j()
-	defer func() {
-		database.MongodbSession.Close()
-	}()
+	// database.MongodbStart()
+	// database.StartNeo4j()
+	// defer func() {
+	// 	database.MongodbSession.Close()
+	// }()
 
 	var resultItems []ResultItem
 	var di DistinctItem
