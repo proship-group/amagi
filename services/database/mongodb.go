@@ -149,14 +149,7 @@ func SessionCopy() *mongodb.Session {
 	// https://godoc.org/labix.org/v2/mgo#Session.SetSafe
 	// W: 2  atleast two instances confirm of writes
 	sc.SetSafe(&mongodb.Safe{WMode: "majority", W: ensureMaxWrite, FSync: true})
-
-	// sc.Login(&mongodb.Credential{
-	// 	Username: "jeanepaul",
-	// 	Password: "jinpol",
-	// })
-
 	sc.SetSyncTimeout(maxSyncTimeout * time.Second)
-
 	sc.SetSocketTimeout(maxSyncTimeout * time.Hour)
 	return sc
 }
