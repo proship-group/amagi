@@ -2,7 +2,6 @@ package queue
 
 import (
 	"fmt"
-	"opsManager/lib/task"
 	"os"
 	"strconv"
 	"time"
@@ -36,9 +35,9 @@ func (s *Scheduler) Tasks(task ...Task) *Scheduler {
 
 // LoopDuration loop duration getter from ENV
 func LoopDuration(envName string) time.Duration {
-	defaultLoopDuration := 60 * task.SecondsMultiplier
+	defaultLoopDuration := 60 * SecondsMultiplier
 	if val, err := strconv.Atoi(os.Getenv(envName)); err == nil {
-		return time.Duration(val) * task.MinutesMultiplier
+		return time.Duration(val) * MinutesMultiplier
 	}
 
 	return defaultLoopDuration
