@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bitly/go-nsq"
-
 	utils "github.com/b-eee/amagi"
 )
 
@@ -35,7 +33,6 @@ type (
 
 // StartNSQ start nsq connection
 func StartNSQ(conf MSGBackendConfig) error {
-	s := time.Now()
 	config := nsq.NewConfig()
 	config.Set("OutputBufferSize", 0)
 	config.Set("OutputBufferTimeout", time.Duration(1)*time.Millisecond)
@@ -44,14 +41,12 @@ func StartNSQ(conf MSGBackendConfig) error {
 	config.Set("LookupdPollJitter", 0)
 	config.Set("Snappy", true)
 
-	utils.Info(fmt.Sprintf("nsq host=%v", config.Hostname))
+	// utils.Info(fmt.Sprintf("nsq host=%v", config.Hostname))
 	if err := NSQCreateProducer(conf, NSQSetConfigConn(config)); err != nil {
 		return err
 	}
 
 	// TestConn()
-
-	utils.Info(fmt.Sprintf("StartNSQ took: %v", time.Since(s)))
 	return nil
 
 }
