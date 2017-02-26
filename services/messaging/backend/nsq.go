@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bitly/go-nsq"
+
 	utils "github.com/b-eee/amagi"
 )
 
