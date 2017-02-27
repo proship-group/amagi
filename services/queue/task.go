@@ -3,6 +3,8 @@ package queue
 import (
 	"fmt"
 	"time"
+
+	utils "github.com/b-eee/amagi"
 )
 
 var (
@@ -25,7 +27,7 @@ type (
 
 // Exec task execution
 func (t *Task) Exec() {
-	fmt.Printf("executing task for %v\n", t.TaskName)
+	utils.Info(fmt.Sprintf("executing task for [%v]", t.TaskName))
 
 	// execute specified task
 	t.Task()

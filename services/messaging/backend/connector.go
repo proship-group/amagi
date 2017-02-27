@@ -81,10 +81,7 @@ func ConnectToMsgBackend(confg MSGBackendConfig) error {
 		"nats": StartNATS,
 	}
 
-	utils.Info(fmt.Sprintf(`connecting to
-							host=%v
-							backend=%v`,
-		confg.Env.Host, confg.Backend))
+	utils.Info(fmt.Sprintf("connecting to %v.. %v", confg.Backend, confg.Env.Host))
 
 	return connectionObj[confg.Backend](confg)
 }
