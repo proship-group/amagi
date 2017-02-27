@@ -12,11 +12,8 @@ import (
 
 // ESItemSave elasticsearch item save
 func ESItemSave(reqItem DistinctItem, fields []map[string]interface{}, wg *sync.WaitGroup) error {
-	dbUtils.MongodbStart()
-
 	defer func() {
 		wg.Done()
-		dbUtils.MongodbSession.Close()
 	}()
 
 	var fieldIDs []string
