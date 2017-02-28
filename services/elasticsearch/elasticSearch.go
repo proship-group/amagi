@@ -323,11 +323,6 @@ func CreateContext() context.Context {
 func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]ResultItem, error) {
 	s := time.Now()
 	// TODO DEPRECATE WHEN SESSION UNIFIED -JP
-	// database.MongodbStart()
-	// database.StartNeo4j()
-	// defer func() {
-	// 	database.MongodbSession.Close()
-	// }()
 
 	var resultItems []ResultItem
 	var di DistinctItem
