@@ -3,13 +3,10 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/b-eee/amagi/services/database"
-	"gopkg.in/mgo.v2/bson"
 
 	utils "github.com/b-eee/amagi"
 	elastic "gopkg.in/olivere/elastic.v5"
@@ -36,6 +33,17 @@ var (
 
 	// DatastoreCollection collection name
 	DatastoreCollection = "data_stores"
+
+	// IndexNameItem index type name for items
+	IndexNameItems = "items"
+	// IndexNameQueries index type name for queries
+	IndexNameQueries = "queries"
+	// IndexNameNewActions index type name for new actions
+	IndexNameNewActions = "newactions"
+	// IndexNameHistories index type name for histories
+	IndexNameHistories = "histories"
+	// IndexNameFiles index type name for files
+	IndexNameFiles = "files"
 )
 
 type (
@@ -62,7 +70,7 @@ type (
 
 	// UserBasicInfo user basic info
 	UserBasicInfo struct {
-		ID         string
+		UserID     string
 		AccessKeys []string
 	}
 
@@ -80,22 +88,22 @@ type (
 
 	// DistinctItem unwinded item
 	DistinctItem struct {
-		WID   string `bson:"w_id" json:"w_id"`
-		PID   string `bson:"p_id" json:"p_id"`
-		DID   string `bson:"d_id" json:"d_id"`
-		QID   string `bson:"q_id" json:"q_id"`
-		IID   string `bson:"i_id" json:"i_id"`
-		FID   string `bson:"f_id" json:"f_id"`
-		AID   string `bson:"a_id" json:"a_id"`
-		HID   string `bson:"h_id" json:"h_id"`
-		Index string `json:"index"`
-		Value string `bson:"value" json:"value"`
+		WID    string `bson:"w_id" json:"w_id"`
+		PID    string `bson:"p_id" json:"p_id"`
+		DID    string `bson:"d_id" json:"d_id"`
+		QID    string `bson:"q_id" json:"q_id"`
+		IID    string `bson:"i_id" json:"i_id"`
+		FID    string `bson:"f_id" json:"f_id"`
+		FileID string `bson:"file_id" json:"file_id"`
+		AID    string `bson:"a_id" json:"a_id"`
+		HID    string `bson:"h_id" json:"h_id"`
+		Index  string `json:"index"`
+		Value  string `bson:"value" json:"value"`
 
 		Attachment struct {
 			Content interface{} `json:"content,omitempty"`
 		} `json:"attachment,omitempty"`
 	}
-
 )
 
 // ESCreateIndex elasticsearch create index
@@ -134,7 +142,9 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v index=%v", time.Since(s), indexName))
+	utils.Pretty(req, "ES document")
+
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v [index=%v, type=%v]", time.Since(s), indexName, req.Type))
 	return nil
 }
 
@@ -223,6 +233,7 @@ func ESBulkDeleteDocuments(requests ...ESSearchReq) error {
 func ESBulkAddDocuments(requests ...ESSearchReq) error {
 	for _, req := range requests {
 		if err := req.ESAddDocument(); err != nil {
+			utils.Error(fmt.Sprintf("ESAddDocument error %v", err))
 			continue
 		}
 	}
