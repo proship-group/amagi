@@ -70,8 +70,9 @@ type (
 
 	// UserBasicInfo user basic info
 	UserBasicInfo struct {
-		UserID     string
-		AccessKeys []string
+		UserID      string
+		WorkspaceID string
+		AccessKeys  []string
 	}
 
 	// Testing test struct
