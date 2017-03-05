@@ -3,13 +3,10 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/b-eee/amagi/services/database"
-	"gopkg.in/mgo.v2/bson"
 
 	utils "github.com/b-eee/amagi"
 	elastic "gopkg.in/olivere/elastic.v5"
@@ -36,6 +33,17 @@ var (
 
 	// DatastoreCollection collection name
 	DatastoreCollection = "data_stores"
+
+	// IndexNameItem index type name for items
+	IndexNameItems = "items"
+	// IndexNameQueries index type name for queries
+	IndexNameQueries = "queries"
+	// IndexNameNewActions index type name for new actions
+	IndexNameNewActions = "newactions"
+	// IndexNameHistories index type name for histories
+	IndexNameHistories = "histories"
+	// IndexNameFiles index type name for files
+	IndexNameFiles = "files"
 )
 
 type (
@@ -62,8 +70,9 @@ type (
 
 	// UserBasicInfo user basic info
 	UserBasicInfo struct {
-		ID         string
-		AccessKeys []string
+		UserID      string
+		WorkspaceID string
+		AccessKeys  []string
 	}
 
 	// Testing test struct
@@ -80,90 +89,22 @@ type (
 
 	// DistinctItem unwinded item
 	DistinctItem struct {
-		QID   string `bson:"q_id" json:"q_id"`
-		IID   string `bson:"i_id" json:"i_id"`
-		DID   string `bson:"d_id" json:"d_id"`
-		FID   string `bson:"f_id" json:"f_id"`
-		PID   string `bson:"p_id" json:"p_id"`
-		WID   string `bson:"w_id" json:"w_id"`
-		AID   string `bson:"a_id" json:"a_id"`
-		Index string `json:"index"`
-		Value string `bson:"value" json:"value"`
+		WID    string `bson:"w_id" json:"w_id"`
+		PID    string `bson:"p_id" json:"p_id"`
+		DID    string `bson:"d_id" json:"d_id"`
+		QID    string `bson:"q_id" json:"q_id"`
+		IID    string `bson:"i_id" json:"i_id"`
+		FID    string `bson:"f_id" json:"f_id"`
+		FileID string `bson:"file_id" json:"file_id"`
+		AID    string `bson:"a_id" json:"a_id"`
+		HID    string `bson:"h_id" json:"h_id"`
+		Index  string `json:"index"`
+		Value  string `bson:"value" json:"value"`
 
 		Attachment struct {
 			Content interface{} `json:"content,omitempty"`
 		} `json:"attachment,omitempty"`
 	}
-
-	// ResultItem result item from mongodb
-	ResultItem struct {
-		QID         string                 `json:"q_id"`
-		IID         bson.ObjectId          `json:"i_id"`
-		DID         string                 `json:"d_id"`
-		FID         string                 `json:"f_id"`
-		PID         string                 `json:"p_id"`
-		WID         string                 `json:"w_id"`
-		MaxScore    float64                `json:"max_score"`
-		Order       int                    `json:"order"`
-		IndexName   string                 `json:"index_name"`
-		TypeName    string                 `json:"type_name"`
-		ColSettings map[string]interface{} `json:"col_settings"`
-		Value       string                 `json:"value"`
-		Item        interface{}            `json:"item"`
-		Title       string                 `json:"title"`
-		Pinned      bool                   `json:"pinned"`
-	}
-
-	// Datastore datastore struct for mgo
-	Datastore struct {
-		ID               string    `bson:"_id" json:"_id"`
-		DID              string    `bson:"d_id" json:"d_id"`
-		DatastoreID      string    `bson:"datastoreID" json:"datastoreID"`
-		CreatedAt        time.Time `bson:"created_at"`
-		Deleted          bool      `bson:"deleted" json:"deleted"`
-		Encoding         string    `json:"encoding"`
-		Failed           bool      `json:"failed"`
-		Imported         bool      `json:"imported"`
-		Name             string    `json:"name"`
-		NoStatus         bool      `json:"no_status"`
-		Progress         int       `json:"progress"`
-		ProjectID        string    `bson:"project_id" json:"project_id"`
-		ShowInMenu       bool      `json:"show_in_menu"`
-		Status           int       `json:"status"`
-		StatusFieldIndex int       `json:"status_field_index"`
-		Uploading        bool      `json:"uploading"`
-	}
-
-	// ItemModifier item modifier request
-	ItemModifier struct {
-		SItems         *[]ResultItem
-		Item           *ResultItem
-		Index          int
-		UserID         string
-		UserBasicInfo  UserBasicInfo
-		CollectionName string
-	}
-
-	// GenericESItem generic elasticsearch item for save
-	GenericESItem struct {
-		QID       string `bson:"q_id" json:"q_id"`
-		IID       string `bson:"i_id" json:"i_id"`
-		DID       string `bson:"d_id" json:"d_id"`
-		FID       string `bson:"f_id" json:"f_id"`
-		PID       string `bson:"p_id" json:"p_id"`
-		IndexName string `bson:"index_name" json:"index_name"`
-		TypeName  string `bson:"type_name" json:"type_name"`
-		Value     string `bson:"value" json:"value"`
-	}
-
-	// ItemMofifiersProc item modifier processors
-	ItemMofifiersProc func(ItemModifier) error
-
-	// ItemMap generic item map
-	ItemMap map[string]interface{}
-
-	// ItemFieldSettings item field settings
-	ItemFieldSettings map[string]map[string]interface{}
 )
 
 // ESCreateIndex elasticsearch create index
@@ -202,7 +143,9 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v index=%v", time.Since(s), indexName))
+	utils.Pretty(req, "ES document")
+
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v [index=%v, type=%v]", time.Since(s), indexName, req.Type))
 	return nil
 }
 
@@ -291,6 +234,7 @@ func ESBulkDeleteDocuments(requests ...ESSearchReq) error {
 func ESBulkAddDocuments(requests ...ESSearchReq) error {
 	for _, req := range requests {
 		if err := req.ESAddDocument(); err != nil {
+			utils.Error(fmt.Sprintf("ESAddDocument error %v", err))
 			continue
 		}
 	}
@@ -317,248 +261,4 @@ func buildRegexpString(str interface{}) string {
 // CreateContext create context
 func CreateContext() context.Context {
 	return context.Background()
-}
-
-// ESSearchItems search items to mongodb by ID
-func ESSearchItems(result elastic.SearchResult, esSearchReq ESSearchReq) ([]ResultItem, error) {
-	s := time.Now()
-	// TODO DEPRECATE WHEN SESSION UNIFIED -JP
-
-	var resultItems []ResultItem
-	var di DistinctItem
-
-	for index, id := range result.Each(reflect.TypeOf(di)) {
-		// original searched item before reflect
-		searchItem := result.Hits.Hits[index]
-		indexName := result.Hits.Hits[index].Index
-		typeName := result.Hits.Hits[index].Type
-
-		if t, ok := id.(DistinctItem); ok {
-
-			resultItem := ResultItem{
-				DID:       t.DID,
-				FID:       t.FID,
-				PID:       t.PID,
-				QID:       t.QID,
-				Order:     index,
-				IndexName: indexName,
-				TypeName:  typeName,
-				MaxScore:  (*searchItem.Score),
-			}
-
-			if len(t.IID) != 0 {
-				resultItem.IID = bson.ObjectIdHex(t.IID)
-			}
-
-			if len(result.Hits.Hits[index].Highlight["value"]) != 0 {
-				resultItem.Value = result.Hits.Hits[index].Highlight["value"][0]
-			}
-
-			resultItems = append(resultItems, resultItem)
-		}
-	}
-
-	if err := GetItemsByCollections(&resultItems, esSearchReq); err != nil {
-		return nil, err
-	}
-
-	utils.Info(fmt.Sprintf("ESSearchItems took: %v", time.Since(s)))
-	return resultItems, nil
-}
-
-type protectedObjectResults struct {
-	sync.RWMutex
-	ObjectMapRes map[bson.ObjectId]ResultItem
-}
-
-func (po *protectedObjectResults) Get(key bson.ObjectId) ResultItem {
-	po.RLock()
-	defer po.RUnlock()
-
-	if value, exists := po.ObjectMapRes[key]; exists {
-		return value
-	}
-
-	return ResultItem{}
-}
-
-func (po *protectedObjectResults) Set(key bson.ObjectId, resultItem ResultItem) {
-	po.Lock()
-	po.ObjectMapRes[key] = resultItem
-	po.Unlock()
-}
-
-// GetItemsByCollections get items by group of collections
-func GetItemsByCollections(searchedItems *[]ResultItem, esSearchReq ESSearchReq) error {
-	s := time.Now()
-
-	sItems := (*searchedItems)
-	groupedItems := make(map[string][]ItemModifier)
-
-	for index := range sItems {
-		itemModifier := ItemModifier{
-			SItems:        searchedItems,
-			Item:          &sItems[index],
-			Index:         index,
-			UserBasicInfo: esSearchReq.UserBasicInfo,
-		}
-
-		switch itemModifier.Item.IndexName {
-
-		// condition block will default to search datastore collections
-		case "datastore", "histories":
-			collection := fmt.Sprintf("items_%v", itemModifier.Item.DID)
-
-			// if len(groupedItems[collection]) == 0 {
-			// 	groupedItems[collection] = []ItemModifier{}
-			// }
-			groupedItems[collection] = append(groupedItems[collection], itemModifier)
-		case "queries":
-			collection := "queries"
-			itemModifier.CollectionName = collection
-			groupedItems[collection] = append(groupedItems[collection], itemModifier)
-		}
-	}
-
-	// fix fatal error: concurrent map writes
-	protectedItem := protectedObjectResults{ObjectMapRes: make(map[bson.ObjectId]ResultItem)}
-	var newResults []ResultItem
-	var wg sync.WaitGroup
-	for key := range groupedItems {
-		wg.Add(1)
-
-		go func(k string) {
-			defer wg.Done()
-
-			var ids []bson.ObjectId
-			for _, s := range groupedItems[k] {
-				if len(s.Item.IID) != 0 && s.Item.IndexName != "queries" {
-					ids = append(ids, s.Item.IID)
-				}
-				switch s.Item.IndexName {
-				case "queries":
-					ids = append(ids, bson.ObjectIdHex(s.Item.QID))
-					protectedItem.Set(bson.ObjectIdHex(s.Item.QID), (*s.Item))
-				default:
-					protectedItem.Set(s.Item.IID, (*s.Item))
-				}
-
-			}
-
-			// for additional data
-			results, err := FindItemsInCollectionByIDS(k, esSearchReq.UserBasicInfo, ids...)
-			if err != nil {
-				return
-			}
-			for _, r := range results {
-				id := r["_id"].(bson.ObjectId)
-				updateObj := ResultItem{
-					IID:       id,
-					Value:     protectedItem.Get(id).Value,
-					DID:       protectedItem.Get(id).DID,
-					PID:       protectedItem.Get(id).PID,
-					IndexName: protectedItem.Get(id).IndexName,
-					TypeName:  protectedItem.Get(id).TypeName,
-					Pinned:    itemIsPinned(r),
-					Title:     protectedItem.Get(id).Title,
-				}
-
-				if title, exists := r["title"].(string); exists {
-					updateObj.Title = title
-				}
-
-				if pid, exists := r["p_id"].(string); exists {
-					updateObj.PID = pid
-				}
-
-				if pid, exists := r["project_id"].(string); exists {
-					updateObj.PID = pid
-				}
-
-				if qid, exists := r["q_id"].(string); exists {
-					updateObj.QID = qid
-				}
-
-				protectedItem.Set(id, updateObj)
-
-			}
-
-		}(key)
-	}
-	wg.Wait()
-
-	for _, item := range protectedItem.ObjectMapRes {
-		newResults = append(newResults, item)
-	}
-
-	(*searchedItems) = newResults
-	utils.Info(fmt.Sprintf("GetItemsByCollections took: %v", time.Since(s)))
-	return nil
-}
-
-// FindItemsInCollectionByIDS find items in collection by item ids
-func FindItemsInCollectionByIDS(collectionName string, userBasicInfo UserBasicInfo, IDS ...bson.ObjectId) ([]map[string]interface{}, error) {
-	if len(IDS) == 0 {
-		return []map[string]interface{}{}, nil
-	}
-
-	var res []map[string]interface{}
-	_, sc := database.BeginMongo()
-	c := sc.DB(database.Db).C(collectionName)
-	defer sc.Close()
-
-	// {"$match": {"_id": {"$in": [ObjectId("589da05d6aeb58dfe0877f48"), ObjectId("589da05d6aeb58dfe0877b48")]}}},
-	// {"$lookup": {
-	//     "from": "tiles",
-	//     "localField": "i_id",
-	//     "foreignField": "i_id",
-	//     "as": "pinned"
-	// }},
-	// {"$unwind": "$pinned"},
-	// {"$match": {"pinned.u_id": "587df90c6aeb5868306d8400"}}
-	query := []bson.M{}
-	match := bson.M{"$match": bson.M{"_id": bson.M{"$in": IDS}, "access_keys": bson.M{"$in": userBasicInfo.AccessKeys}}}
-
-	query = append(query, match)
-
-	lookup := bson.M{"$lookup": bson.M{
-		"from":         "tiles",
-		"localField":   determineLocalField(collectionName),
-		"foreignField": "i_id",
-		"as":           "pinned",
-	}}
-	query = append(query, lookup)
-
-	if err := c.Pipe(query).AllowDiskUse().All(&res); err != nil {
-		utils.Error(fmt.Sprintf("error in FindItemsInCollectionByIDS %v", err))
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func itemIsPinned(item map[string]interface{}) bool {
-	itemIsPinned := false
-	if pinned, ok := item["pinned"]; ok {
-		// retrieve first pin
-		tiles := pinned.([]interface{})
-		if len(tiles) > 0 {
-			pinnedMap := tiles[0].(map[string]interface{})
-			itemIsPinned = pinnedMap["pinned"].(bool)
-
-		}
-	}
-
-	return itemIsPinned
-}
-
-func determineLocalField(collection string) string {
-	localField := "i_id"
-
-	switch collection {
-	case "queries":
-		localField = "q_id"
-	}
-
-	return localField
 }
