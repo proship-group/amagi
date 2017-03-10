@@ -52,5 +52,11 @@ func getCwd() string {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	// if path is root, return empty instead
+	if pwd == "/" {
+		pwd = ""
+	}
+
 	return pwd
 }
