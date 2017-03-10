@@ -143,7 +143,7 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	utils.Pretty(req, "ES document")
+	//utils.Pretty(req, "ES document")
 
 	utils.Info(fmt.Sprintf("ESaddDocument took: %v [index=%v, type=%v]", time.Since(s), indexName, req.Type))
 	return nil
