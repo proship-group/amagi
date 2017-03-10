@@ -44,7 +44,7 @@ func InitAppMonit() error {
 		wg.Add(1)
 
 		go func(t MonitorTasks) {
-			utils.Info(fmt.Sprintf("starting app monitoring -->> %v", t.TaskName))
+			utils.Info(fmt.Sprintf("starting monitoring task -->> %v", t.TaskName))
 			if err := t.Task(&wg); err != nil {
 				return
 			}
