@@ -3,10 +3,8 @@ package amagi
 import (
 	"fmt"
 	"runtime/debug"
-	"sync"
 	"time"
 
-	"github.com/b-eee/amagi/api/pubnub"
 	"github.com/b-eee/amagi/api/slack"
 	"github.com/b-eee/amagi/services/sentry"
 
@@ -25,39 +23,26 @@ var (
 // Init initialize slack API
 func Init(host slack.Host) {
 	slack.Init(host)
-
-	pubnub.SetPubNubConnection()
 }
 
 // Info print to stdout our message
 func Info(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("i"), msg)
 	fmt.Println(str)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go pubnub.Publish(str, &wg)
 }
 
 // Warn print to stdout
 func Warn(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("w"), msg)
-
 	fmt.Println(str)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go pubnub.Publish(str, &wg)
 }
 
 // Error print to stdout
 func Error(msg string) {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
-
 	fmt.Println(str)
+
 	sentry.SendToSentry(msg)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go pubnub.Publish(str, &wg)
 }
 
 // Fatal fatal print to stdout
@@ -65,9 +50,6 @@ func Fatal(msg string) {
 	str := errMsgFmt("f", msg)
 
 	go slack.Send("", str)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go pubnub.Publish(str, &wg)
 
 	sentry.SendToSentry(msg)
 	fmt.Println(str)
