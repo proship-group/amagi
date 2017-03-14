@@ -16,7 +16,7 @@ import (
 
 // ESHTTPItemUpdate elasticsearch update API
 func (req *ESSearchReq) ESHTTPItemUpdate() error {
-	itemReq := req.BodyJSON.(DistinctItem)
+	itemReq := req.BodyJSON
 	query := fmt.Sprintf(`
 		{
 			"query":{
@@ -83,7 +83,7 @@ func (req *ESSearchReq) ESFileAttachIndex() error {
 		return err
 	}
 
-	if err := putFileIngestAttachment(req.BodyJSON.(DistinctItem), req.FileBase64); err != nil {
+	if err := putFileIngestAttachment(req.BodyJSON, req.FileBase64); err != nil {
 		return err
 	}
 

@@ -27,10 +27,9 @@ func ExecuteCypherQuery(query neoism.CypherQuery) error {
 
 	if flag, err := strconv.Atoi(os.Getenv(cypherDebugFlag)); flag == CypherDebugDefault || err != nil {
 		str = append(str, fmt.Sprintf("%v", query))
+		utils.Info(strings.Join(str, " "))
 	}
-	utils.Info(strings.Join(str, " "))
 
-	// utils.Info(fmt.Sprintf("ExecuteCypherQuery took: %v", time.Since(s)))
 	return err
 }
 

@@ -44,6 +44,9 @@ var (
 	IndexNameHistories = "histories"
 	// IndexNameFiles index type name for files
 	IndexNameFiles = "files"
+
+	GlobalSearchIndexName = "globalsearch"
+	SearchKeysTypeName    = "searchkeys"
 )
 
 type (
@@ -52,7 +55,7 @@ type (
 		IndexName  string
 		Type       string
 		Context    context.Context
-		BodyJSON   interface{}
+		BodyJSON   DistinctItem
 		FileBase64 string
 
 		SearchName   string
@@ -98,8 +101,13 @@ type (
 		FileID string `bson:"file_id" json:"file_id"`
 		AID    string `bson:"a_id" json:"a_id"`
 		HID    string `bson:"h_id" json:"h_id"`
-		Index  string `json:"index"`
-		Value  string `bson:"value" json:"value"`
+
+		Index string `json:"index"`
+		Type  string `json:"type"`
+
+		Title string `bson:"title" json:"title"`
+		Value string `bson:"value" json:"value"`
+		Keys string `bson:"keys" json:"keys"`
 
 		Attachment struct {
 			Content interface{} `json:"content,omitempty"`
@@ -121,6 +129,11 @@ func ESCreateIndex(indexName string) error {
 
 // ESAddDocument add document to the index
 func (req *ESSearchReq) ESAddDocument() error {
+
+	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
+	req.IndexName = GlobalSearchIndexName
+	req.Type = SearchKeysTypeName
+
 	// indexname should be lowercase
 	indexName := strings.ToLower(req.IndexName)
 
@@ -143,7 +156,18 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	//utils.Pretty(req, "ES document")
+	//var result interface{}
+	//var err error
+	//if result, err = database.ESGetConn().IndexAnalyze().
+	//	Index(indexName).
+	//	Analyzer("default").
+	//	Do(CreateContext()); err != nil {
+	//
+	//	utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
+	//}
+	//utils.Pretty(result, "anylized!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+	utils.Pretty(req, "ES document")
 
 	utils.Info(fmt.Sprintf("ESaddDocument took: %v [index=%v, type=%v]", time.Since(s), indexName, req.Type))
 	return nil
@@ -151,7 +175,12 @@ func (req *ESSearchReq) ESAddDocument() error {
 
 // ESDeleteDocument delete document
 func (req *ESSearchReq) ESDeleteDocument() error {
-	del := elastic.NewMatchQuery("i_id", req.BodyJSON.(DistinctItem).IID)
+
+	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
+	req.IndexName = GlobalSearchIndexName
+	req.Type = SearchKeysTypeName
+
+	del := elastic.NewMatchQuery("i_id", req.BodyJSON.IID)
 
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
@@ -186,27 +215,39 @@ type concurrentSearch struct {
 }
 
 // ESTermQuery new term query
-// manual settings for setting default tokenizer for kuromoji
-// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_close'
-// $ curl -u elastic -XPUT 'http://104.198.115.53:9400/datastore/_settings?preserve_existing=true' -d '{   "index.analysis.analyzer.default.tokenizer" : "kuromoji",   "index.analysis.analyzer.default.type" : "custom" }'
-// $ curl -u elastic -XPOST 'http://104.198.115.53:9400/datastore/_open'
 func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
 	// joinedText := buildRegexpString(req.SearchValues)
 	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
 	// 	Boost(1.2).Analyzer("analyzer")
 
-	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).Field("value").Field("attachment.content").AnalyzeWildcard(true).Analyzer("kuromoji")
+	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
+	req.IndexName = GlobalSearchIndexName
+	req.Type = SearchKeysTypeName
+
+	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
+		Field("title").
+		Field("value").
+		Field("keys").
+		Field("attachment.content").
+		DefaultOperator("AND").
+		AnalyzeWildcard(true)
+
+	//DEBUG CODE!!! ,HI
+	utils.Pretty(query, "NewSimpleQueryStringQuery")
 
 	searchResult, err := database.ESGetConn().Search().
-		Index("_all").
+		Index(GlobalSearchIndexName).
 		Highlight(ResultHighlighter(req.SearchField)).
 		Query(query).
 		From(0).
-		Size(50).
+		Size(200).
 		Do(CreateContext())
 	if err != nil {
 		return nil, err
 	}
+
+	//DEBUG CODE!!! ,HI
+	//utils.Pretty(searchResult, "----------------Result[0]----------------")
 
 	utils.Info(fmt.Sprintf("ESTermQuery took: %v ms hits: %v", searchResult.TookInMillis, searchResult.Hits.TotalHits))
 	return searchResult, nil
