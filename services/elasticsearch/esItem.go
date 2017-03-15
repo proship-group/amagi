@@ -36,14 +36,13 @@ func ESItemSave(reqItem DistinctItem, fields []map[string]interface{}, wg *sync.
 				IndexName: IndexNameItems,
 				Type:      "field",
 				BodyJSON: DistinctItem{
-					WID:   reqItem.WID,
-					PID:   reqItem.PID,
-					DID:   reqItem.DID,
-					IID:   reqItem.IID,
-					FID:   field,
-					Index:  IndexNameItems,
-					Type:  "field",
-					Value: fmt.Sprintf("%v", value),
+					Category: IndexNameItems,
+					WID:      reqItem.WID,
+					PID:      reqItem.PID,
+					DID:      reqItem.DID,
+					IID:      reqItem.IID,
+					FID:      field,
+					Value:    fmt.Sprintf("%v", value),
 				},
 			}
 

@@ -34,19 +34,39 @@ var (
 	// DatastoreCollection collection name
 	DatastoreCollection = "data_stores"
 
-	// IndexNameItem index type name for items
-	IndexNameItems = "items"
-	// IndexNameQueries index type name for queries
-	IndexNameQueries = "queries"
-	// IndexNameNewActions index type name for new actions
-	IndexNameNewActions = "newactions"
-	// IndexNameHistories index type name for histories
-	IndexNameHistories = "histories"
-	// IndexNameFiles index type name for files
-	IndexNameFiles = "files"
+	// IndexNameGlobalSearch elasticsearch index name
+	IndexNameGlobalSearch  = "global_search"
 
-	GlobalSearchIndexName = "globalsearch"
-	SearchKeysTypeName    = "searchkeys"
+	// TypeNameFullTextSearch elasticsearch index type name of full text search
+	TypeNameFullTextSearch = "fulltext_search"
+	// TypeNameFileSearch elasticsearch index type name of file search
+	TypeNameFileSearch     = "file_search"
+
+	FieldNameCategory = "category"
+	FieldNameKeyType = "key_type"
+
+	// IndexNameItem index category name for items
+	IndexNameItems = "items"
+	// IndexNameItem index category name for items
+	IndexNameFieldValues = "field_values"
+	// IndexNameQueries index category name for queries
+	IndexNameQueries = "queries"
+	// IndexNameNewActions index category name for new actions
+	IndexNameNewActions = "newactions"
+	// IndexNameHistories index category name for histories
+	IndexNameHistories = "histories"
+	// IndexNameFiles index category name for files
+	IndexNameFiles = "files"
+	// IndexNameItem index category name for datastores (use for delete index request)
+	IndexNameDatastores = "datastores"
+	// IndexNameItem index category name for projects (use for delete index request)
+	IndexNameProjects = "projects"
+
+	//IndexTypeNameMenu = "shortcut_menu"
+	//IndexTypeNameComment = "item_comment"
+	//IndexTypeNameFileContent = "file_content"
+	//IndexTypeNameFieldValue = "field_value"
+
 )
 
 type (
@@ -92,23 +112,23 @@ type (
 
 	// DistinctItem unwinded item
 	DistinctItem struct {
-		WID    string `bson:"w_id" json:"w_id"`
-		PID    string `bson:"p_id" json:"p_id"`
-		DID    string `bson:"d_id" json:"d_id"`
-		QID    string `bson:"q_id" json:"q_id"`
-		IID    string `bson:"i_id" json:"i_id"`
-		FID    string `bson:"f_id" json:"f_id"`
-		FileID string `bson:"file_id" json:"file_id"`
-		AID    string `bson:"a_id" json:"a_id"`
-		HID    string `bson:"h_id" json:"h_id"`
+		WID string `bson:"w_id" json:"w_id"`
+		PID string `bson:"p_id" json:"p_id"`
+		DID string `bson:"d_id" json:"d_id"`
+		QID string `bson:"q_id" json:"q_id"`
+		IID string `bson:"i_id" json:"i_id"`
+		FID string `bson:"f_id" json:"f_id"`
+		AID string `bson:"a_id" json:"a_id"`
+		HID string `bson:"h_id" json:"h_id"`
 
-		Index string `json:"index"`
-		Type  string `json:"type"`
+		Category string `json:"category"`
+		//KeyType  string `json:"key_type"`
 
 		Title string `bson:"title" json:"title"`
 		Value string `bson:"value" json:"value"`
-		Keys string `bson:"keys" json:"keys"`
+		Keys  string `bson:"keys" json:"keys"`
 
+		FileID     string `bson:"file_id" json:"file_id"`
 		Attachment struct {
 			Content interface{} `json:"content,omitempty"`
 		} `json:"attachment,omitempty"`
@@ -129,22 +149,22 @@ func ESCreateIndex(indexName string) error {
 
 // ESAddDocument add document to the index
 func (req *ESSearchReq) ESAddDocument() error {
+	s := time.Now()
 
-	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
-	req.IndexName = GlobalSearchIndexName
-	req.Type = SearchKeysTypeName
+	// USE GLOBAL COMMON INDEX !! TODO: Refactor code ,HI
+	req.IndexName = IndexNameGlobalSearch
+	req.Type = TypeNameFullTextSearch
 
 	// indexname should be lowercase
 	indexName := strings.ToLower(req.IndexName)
 
 	if exists, err := database.ESGetConn().IndexExists(indexName).Do(CreateContext()); !exists || err != nil {
-		utils.Error(fmt.Sprintf("index does not exists! err=%v creating index.. %v", err, indexName))
+		utils.Warn(fmt.Sprintf("index does not exists! err=%v creating index.. %v", err, indexName))
 		if err := ESCreateIndex(strings.ToLower(indexName)); err != nil {
 			return err
 		}
 	}
 
-	s := time.Now()
 	if _, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
@@ -156,47 +176,68 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	//var result interface{}
-	//var err error
-	//if result, err = database.ESGetConn().IndexAnalyze().
-	//	Index(indexName).
-	//	Analyzer("default").
-	//	Do(CreateContext()); err != nil {
-	//
-	//	utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
-	//}
-	//utils.Pretty(result, "anylized!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	//utils.Pretty(req, "ES document")
 
-	utils.Pretty(req, "ES document")
-
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v [index=%v, type=%v]", time.Since(s), indexName, req.Type))
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v, keytype=%v]",
+		time.Since(s), req.BodyJSON.Category, req.BodyJSON.KeyType))
 	return nil
 }
 
 // ESDeleteDocument delete document
 func (req *ESSearchReq) ESDeleteDocument() error {
+	s := time.Now()
 
-	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
-	req.IndexName = GlobalSearchIndexName
-	req.Type = SearchKeysTypeName
+	// USE GLOBAL COMMON INDEX !!  TODO: Refactor ,HI
+	req.IndexName = IndexNameGlobalSearch
 
-	del := elastic.NewMatchQuery("i_id", req.BodyJSON.IID)
+	// set delete query key-value
+	var key, value string
+	switch req.BodyJSON.Category {
+	case IndexNameItems:
+		key = "i_id"
+		value = req.BodyJSON.IID
+	case IndexNameFieldValues:
+		key = "f_id"
+		value = req.BodyJSON.FID
+	case IndexNameNewActions:
+		key = "a_id"
+		value = req.BodyJSON.AID
+	case IndexNameQueries:
+		key = "q_id"
+		value = req.BodyJSON.QID
+	case IndexNameHistories:
+		key = "h_id"
+		value = req.BodyJSON.HID
+	case IndexNameFiles:
+		key = "file_id"
+		value = req.BodyJSON.FileID
+	case IndexNameDatastores:
+		key = "d_id"
+		value = req.BodyJSON.DID
+	case IndexNameProjects:
+		key = "p_id"
+		value = req.BodyJSON.PID
+	default:
+		return fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category )
+	}
 
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
 		Index(strings.Split(req.IndexName, ",")...).
-		Query(del).
+		Query(elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category)).
+		Query(elastic.NewMatchQuery(key, value)).
 		Do(CreateContext())
 	if err != nil {
 		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
 		return err
 	}
 
-	fmt.Println("deleted: ", res.Deleted)
 	if res.Deleted == 0 {
 		return fmt.Errorf("deleted: %v", res.Deleted)
 	}
 
+	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v [category=%v, keytype=%v]",
+		time.Since(s), req.BodyJSON.Category, req.BodyJSON.KeyType))
 	return nil
 }
 
@@ -221,10 +262,11 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 	// 	Boost(1.2).Analyzer("analyzer")
 
 	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
-	req.IndexName = GlobalSearchIndexName
-	req.Type = SearchKeysTypeName
+	//req.IndexName = IndexNameGlobalSearch
+	//req.Type = TypeNameFullTextSearch
 
 	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
+		Field("_all").
 		Field("title").
 		Field("value").
 		Field("keys").
@@ -232,13 +274,11 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		DefaultOperator("AND").
 		AnalyzeWildcard(true)
 
-	//DEBUG CODE!!! ,HI
-	utils.Pretty(query, "NewSimpleQueryStringQuery")
-
 	searchResult, err := database.ESGetConn().Search().
-		Index(GlobalSearchIndexName).
-		Highlight(ResultHighlighter(req.SearchField)).
+		Index(IndexNameGlobalSearch).
+		Highlight(ResultHighlighter()).
 		Query(query).
+		PostFilter(elastic.NewMatchQuery("w_id", req.UserBasicInfo.WorkspaceID)).
 		From(0).
 		Size(200).
 		Do(CreateContext())
@@ -254,9 +294,12 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 }
 
 // ResultHighlighter create result highlighter
-func ResultHighlighter(field string) *elastic.Highlight {
+func ResultHighlighter() *elastic.Highlight {
 	return elastic.NewHighlight().
-		Fields(elastic.NewHighlighterField(field)).
+		Fields(elastic.NewHighlighterField("title"),
+			elastic.NewHighlighterField("value"),
+			elastic.NewHighlighterField("keys"),
+			elastic.NewHighlighterField("attachment.content")).
 		PreTags("<em class='searched_em'>").PostTags("</em>")
 }
 
