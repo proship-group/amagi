@@ -128,6 +128,11 @@ func TaskTimeGen(sc *Scheduler) time.Duration {
 	min, _ := strconv.Atoi(sc.SchedulerTimeMinute)
 	target := time.Date(s.Year(), s.Month(), s.Day(), hour, min, 0, 0, time.FixedZone("Asia/Tokyo", 9*60*60))
 
+	// TODO validate if time exceeded -JP
+	// if time.Now() > target. {
+
+	// }
+
 	if sc.LastExecution != (time.Time{}) {
 		s = sc.LastExecution.Add(Daily)
 		hour = s.Hour()
