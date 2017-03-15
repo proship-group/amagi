@@ -176,10 +176,10 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	//utils.Pretty(req, "ES document")
+	utils.Pretty(req.BodyJSON, "ES create document")
 
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v, keytype=%v]",
-		time.Since(s), req.BodyJSON.Category, req.BodyJSON.KeyType))
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v]",
+		time.Since(s), req.BodyJSON.Category))
 	return nil
 }
 
@@ -236,8 +236,8 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 		return fmt.Errorf("deleted: %v", res.Deleted)
 	}
 
-	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v [category=%v, keytype=%v]",
-		time.Since(s), req.BodyJSON.Category, req.BodyJSON.KeyType))
+	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v [category=%v]",
+		time.Since(s), req.BodyJSON.Category))
 	return nil
 }
 
