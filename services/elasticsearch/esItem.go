@@ -33,18 +33,23 @@ func ESItemSave(reqItem DistinctItem, fields []map[string]interface{}, wg *sync.
 	for _, field := range fieldIDs {
 		if value, exists := item[field]; exists {
 			req := ESSearchReq{
-				IndexName: "datastore",
+				IndexName: IndexNameItems,
 				Type:      "field",
 				BodyJSON: DistinctItem{
-					IID:   reqItem.IID,
-					PID:   reqItem.PID,
-					WID:   reqItem.WID,
-					DID:   reqItem.DID,
-					FID:   field,
-					Value: fmt.Sprintf("%v", value),
+					Category: IndexNameItems,
+					WID:      reqItem.WID,
+					PID:      reqItem.PID,
+					DID:      reqItem.DID,
+					IID:      reqItem.IID,
+					FID:      field,
+					Value:    fmt.Sprintf("%v", value),
 				},
 			}
+
+			utils.Info(fmt.Sprintf("Indexing (field: %v) -------> %v",field,  value))
+
 			if err := req.ESAddDocument(); err != nil {
+				utils.Warn(fmt.Sprintf("error ESAddDocument %v", err))
 				continue
 			}
 		}
