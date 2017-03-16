@@ -16,7 +16,7 @@ import (
 
 // ESHTTPItemUpdate elasticsearch update API
 func (req *ESSearchReq) ESHTTPItemUpdate() error {
-	itemReq := req.BodyJSON.(DistinctItem)
+	itemReq := req.BodyJSON
 	query := fmt.Sprintf(`
 		{
 			"query":{
@@ -69,7 +69,8 @@ func (req *ESSearchReq) ESDeleteHTTPByQuery(query map[string]interface{}) error 
 	}
 
 	if err := ESReqHTTPPost(req.IndexName, "_delete_by_query", str); err != nil {
-		// TODO error handling -jp
+		utils.Error(fmt.Sprintf("error ESReqHTTPPost %v", err))
+		return err
 	}
 
 	return nil
@@ -83,7 +84,7 @@ func (req *ESSearchReq) ESFileAttachIndex() error {
 		return err
 	}
 
-	if err := putFileIngestAttachment(req.BodyJSON.(DistinctItem), req.FileBase64); err != nil {
+	if err := putFileIngestAttachment(req.BodyJSON, req.FileBase64); err != nil {
 		return err
 	}
 
@@ -91,18 +92,19 @@ func (req *ESSearchReq) ESFileAttachIndex() error {
 	return nil
 }
 
-func putFileIngestAttachment(item DistinctItem, fileBase64 string) error {
+func putFileIngestAttachment(di DistinctItem, fileBase64 string) error {
 	query := fmt.Sprintf(`
 		{
 			"data": "%v",
-			"i_id": "%v",
-			"d_id": "%v",
 			"w_id": "%v",
-			"p_id": "%v"
+			"p_id": "%v",
+			"d_id": "%v",
+			"i_id": "%v",
+			"file_id": "%v"
 		}	
-	`, fileBase64, item.IID, item.DID, item.WID, item.PID)
-
-	if err := ESReqHTTPPut(fmt.Sprintf("datastore/file/%v?pipeline=attachment", item.IID), []byte(query)); err != nil {
+	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID)
+	if err := ESReqHTTPPut(fmt.Sprintf("%v/%v/%v?pipeline=attachment",
+		IndexNameGlobalSearch, TypeNameFileSearch, di.FileID), []byte(query)); err != nil {
 		return err
 	}
 
@@ -176,7 +178,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	utils.Info(fmt.Sprintf("sending post to %v", esURL))
 
 	req, err := http.NewRequest("POST", esURL, bytes.NewBuffer(query))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-KeyType", "application/json")
 
 	conf := database.GetESConfigs()
 	req.SetBasicAuth(conf.Username, conf.Password)
@@ -211,7 +213,7 @@ func ESReqHTTPDelete(path string) error {
 	utils.Info(fmt.Sprintf("sending post to %v", esURL))
 
 	req, err := http.NewRequest("DELETE", esURL, bytes.NewBuffer([]byte("")))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-KeyType", "application/json")
 
 	conf := database.GetESConfigs()
 	req.SetBasicAuth(conf.Username, conf.Password)
