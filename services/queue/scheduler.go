@@ -33,6 +33,7 @@ type (
 
 		SchedulerTimeHour   string
 		SchedulerTimeMinute string
+		SchedulerIncrement  time.Duration
 
 		Quit chan int
 	}
@@ -52,8 +53,16 @@ func (s *Scheduler) SchedulerDuration(schedule func(*Scheduler) time.Duration) *
 	return s
 }
 
+// SetSchedulerIncrement set scheduler increment
+func (s *Scheduler) SetSchedulerIncrement(inc time.Duration) *Scheduler {
+	s.SchedulerIncrement = inc
+	return s
+}
+
 // SetHourMinute set hour and minute for main task scheduler
 func (s *Scheduler) SetHourMinute(hour, minute string) *Scheduler {
+	utils.Info(fmt.Sprintf("Task set for hour/minute %v/%v", hour, minute))
+
 	s.SchedulerTimeHour = hour
 	s.SchedulerTimeMinute = minute
 
@@ -134,7 +143,7 @@ func TaskTimeGen(sc *Scheduler) time.Duration {
 	// }
 
 	if sc.LastExecution != (time.Time{}) {
-		s = sc.LastExecution.Add(Daily)
+		s = sc.LastExecution.Add(sc.SchedulerIncrement)
 		hour = s.Hour()
 		min = s.Minute()
 		target = s
