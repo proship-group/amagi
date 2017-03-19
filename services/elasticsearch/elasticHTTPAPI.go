@@ -100,9 +100,11 @@ func putFileIngestAttachment(di DistinctItem, fileBase64 string) error {
 			"p_id": "%v",
 			"d_id": "%v",
 			"i_id": "%v",
-			"file_id": "%v"
+			"file_id": "%v",
+			"category": "%v"
 		}	
-	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID)
+	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID, di.Category)
+
 	if err := ESReqHTTPPut(fmt.Sprintf("%v/%v/%v?pipeline=attachment",
 		IndexNameGlobalSearch, TypeNameFileSearch, di.FileID), []byte(query)); err != nil {
 		return err
@@ -137,7 +139,7 @@ func createIngestPipeline() error {
 // ESReqHTTPPut basic http put
 func ESReqHTTPPut(api string, query []byte) error {
 	esURL := esURLWoIndex(api)
-	utils.Info(fmt.Sprintf("ESreqHTTPPut url %v", esURL))
+	utils.Info(fmt.Sprintf("  ESreqHTTPPut url %v", esURL))
 	client := &http.Client{
 		Timeout: time.Duration(60 * time.Second),
 	}
@@ -155,7 +157,7 @@ func ESReqHTTPPut(api string, query []byte) error {
 		return err
 	}
 	defer resp.Body.Close()
-	utils.Info(fmt.Sprintf("ESREqHTTPPut for %v code=%v", api, resp.StatusCode))
+	utils.Info(fmt.Sprintf("  --> ESreqHTTPPut response code=%v (%v)", resp.StatusCode, api))
 	if resp.StatusCode == 400 {
 		var r interface{}
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
@@ -175,7 +177,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	s := time.Now()
 	esURL := esURL(index, apiname)
 
-	utils.Info(fmt.Sprintf("sending post to %v", esURL))
+	utils.Info(fmt.Sprintf("  ESReqHTTPPost url  %v", esURL))
 
 	req, err := http.NewRequest("POST", esURL, bytes.NewBuffer(query))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -199,7 +201,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	}
 
 	if r.Updated == 0 {
-		return fmt.Errorf("updated failed updated=%v", r.Updated)
+		return fmt.Errorf("  updated failed updated=%v", r.Updated)
 	}
 
 	utils.Info(fmt.Sprintf("ESReqHTTPPost took: %v updated: %v deleted: %v", time.Since(s), r.Updated, r.Deleted))
@@ -210,7 +212,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 func ESReqHTTPDelete(path string) error {
 	esURL := esURL(path, "")
 
-	utils.Info(fmt.Sprintf("sending post to %v", esURL))
+	utils.Info(fmt.Sprintf("  ESReqHTTPDelete url %v", esURL))
 
 	req, err := http.NewRequest("DELETE", esURL, bytes.NewBuffer([]byte("")))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -224,7 +226,7 @@ func ESReqHTTPDelete(path string) error {
 	}
 	defer resp.Body.Close()
 
-	utils.Info(fmt.Sprintf("ESReqHTTPDelete status=%v", resp.StatusCode))
+	utils.Info(fmt.Sprintf("  --> ESReqHTTPDelete status=%v", resp.StatusCode))
 	return nil
 }
 

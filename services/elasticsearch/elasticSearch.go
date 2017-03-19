@@ -224,8 +224,11 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
 		Index(strings.Split(req.IndexName, ",")...).
-		Query(elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category)).
-		Query(elastic.NewMatchQuery(key, value)).
+		Query(elastic.NewBoolQuery().
+			Must(
+				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
+				elastic.NewMatchQuery(key, value),
+			)).
 		Do(CreateContext())
 	if err != nil {
 		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
