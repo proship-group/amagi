@@ -165,7 +165,7 @@ func (req *ESSearchReq) ESAddDocument() error {
 		}
 	}
 
-	res, err := database.ESGetConn().Index().
+	_, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
 		BodyJson(req.BodyJSON).
