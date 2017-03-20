@@ -165,18 +165,19 @@ func (req *ESSearchReq) ESAddDocument() error {
 		}
 	}
 
-	if _, err := database.ESGetConn().Index().
+	res, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
 		BodyJson(req.BodyJSON).
 		Refresh("true").
-		Do(CreateContext()); err != nil {
-
+		Do(CreateContext())
+	if err != nil{
 		utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
 		return err
 	}
 
-	utils.Pretty(req.BodyJSON, "ES create document")
+	//utils.Pretty(req.BodyJSON, "ES create document")
+	//utils.Pretty(res,"add es document response")
 
 	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v]",
 		time.Since(s), req.BodyJSON.Category))
@@ -224,13 +225,18 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
 		Index(strings.Split(req.IndexName, ",")...).
-		Query(elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category)).
-		Query(elastic.NewMatchQuery(key, value)).
+		Query(elastic.NewBoolQuery().
+			Must(
+				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
+				elastic.NewMatchQuery(key, value),
+			)).
 		Do(CreateContext())
 	if err != nil {
 		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
 		return err
 	}
+
+	//utils.Pretty(req,"delete documents")
 
 	if res.Deleted == 0 {
 		return fmt.Errorf("deleted: %v", res.Deleted)
@@ -257,13 +263,6 @@ type concurrentSearch struct {
 
 // ESTermQuery new term query
 func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.SearchResult, error) {
-	// joinedText := buildRegexpString(req.SearchValues)
-	// query := elastic.NewRegexpQuery(req.SearchField, joinedText).
-	// 	Boost(1.2).Analyzer("analyzer")
-
-	// USE GLOBAL COMMON INDEX !! TODO: Refactor all called code ,HI
-	//req.IndexName = IndexNameGlobalSearch
-	//req.Type = TypeNameFullTextSearch
 
 	query := elastic.NewSimpleQueryStringQuery(fmt.Sprintf("%v", req.SearchValues)).
 		Field("_all").
@@ -286,8 +285,7 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		return nil, err
 	}
 
-	//DEBUG CODE!!! ,HI
-	//utils.Pretty(searchResult, "----------------Result[0]----------------")
+	//utils.Pretty(searchResult, "Result of ES")
 
 	utils.Info(fmt.Sprintf("ESTermQuery took: %v ms hits: %v", searchResult.TookInMillis, searchResult.Hits.TotalHits))
 	return searchResult, nil

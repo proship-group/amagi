@@ -81,10 +81,12 @@ func (req *ESSearchReq) ESDeleteHTTPByQuery(query map[string]interface{}) error 
 func (req *ESSearchReq) ESFileAttachIndex() error {
 	s := time.Now()
 	if err := createIngestPipeline(); err != nil {
+		utils.Error(fmt.Sprintf("error createIngestPipeline %v", err))
 		return err
 	}
 
 	if err := putFileIngestAttachment(req.BodyJSON, req.FileBase64); err != nil {
+		utils.Error(fmt.Sprintf("error putFileIngestAttachment %v", err))
 		return err
 	}
 
@@ -100,11 +102,17 @@ func putFileIngestAttachment(di DistinctItem, fileBase64 string) error {
 			"p_id": "%v",
 			"d_id": "%v",
 			"i_id": "%v",
-			"file_id": "%v"
-		}	
-	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID)
+			"file_id": "%v",
+			"category": "%v",
+			"title": "%v",
+			"value": "%v",
+			"keys": "%v"
+		}
+	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID, di.Category, di.Title, di.Value, di.Keys)
+
 	if err := ESReqHTTPPut(fmt.Sprintf("%v/%v/%v?pipeline=attachment",
 		IndexNameGlobalSearch, TypeNameFileSearch, di.FileID), []byte(query)); err != nil {
+		utils.Error(fmt.Sprintf("error ESReqHTTPPut %v", err))
 		return err
 	}
 
@@ -137,13 +145,13 @@ func createIngestPipeline() error {
 // ESReqHTTPPut basic http put
 func ESReqHTTPPut(api string, query []byte) error {
 	esURL := esURLWoIndex(api)
-	utils.Info(fmt.Sprintf("ESreqHTTPPut url %v", esURL))
+	utils.Info(fmt.Sprintf("  ESreqHTTPPut url %v", esURL))
 	client := &http.Client{
 		Timeout: time.Duration(60 * time.Second),
 	}
 	req, err := http.NewRequest("PUT", esURL, bytes.NewBuffer(query))
 	if err != nil {
-		utils.Error(fmt.Sprintf("error ESReqHTTPPut %v", err))
+		utils.Error(fmt.Sprintf("error NewRequest %v", err))
 		return err
 	}
 
@@ -155,18 +163,18 @@ func ESReqHTTPPut(api string, query []byte) error {
 		return err
 	}
 	defer resp.Body.Close()
-	utils.Info(fmt.Sprintf("ESREqHTTPPut for %v code=%v", api, resp.StatusCode))
+
+	utils.Info(fmt.Sprintf("  --> ESreqHTTPPut response status : %v (%v)", resp.Status, api))
 	if resp.StatusCode == 400 {
-		var r interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-
-		}
+		utils.Error(fmt.Sprintf("error of response ESreqHTTPPut Status : %v", resp.Status))
 	}
+	//var r map[string]interface{}
+	//if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+	//	utils.Warn(fmt.Sprintf("error to decode response %v", err))
+	//	//return err
+	//}
+	//utils.Pretty(r,"ESReqHTTPPut Response")
 
-	var r map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -175,7 +183,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	s := time.Now()
 	esURL := esURL(index, apiname)
 
-	utils.Info(fmt.Sprintf("sending post to %v", esURL))
+	utils.Info(fmt.Sprintf("  ESReqHTTPPost url  %v", esURL))
 
 	req, err := http.NewRequest("POST", esURL, bytes.NewBuffer(query))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -199,7 +207,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	}
 
 	if r.Updated == 0 {
-		return fmt.Errorf("updated failed updated=%v", r.Updated)
+		return fmt.Errorf("  updated failed updated=%v", r.Updated)
 	}
 
 	utils.Info(fmt.Sprintf("ESReqHTTPPost took: %v updated: %v deleted: %v", time.Since(s), r.Updated, r.Deleted))
@@ -210,7 +218,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 func ESReqHTTPDelete(path string) error {
 	esURL := esURL(path, "")
 
-	utils.Info(fmt.Sprintf("sending post to %v", esURL))
+	utils.Info(fmt.Sprintf("  ESReqHTTPDelete url %v", esURL))
 
 	req, err := http.NewRequest("DELETE", esURL, bytes.NewBuffer([]byte("")))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -224,7 +232,7 @@ func ESReqHTTPDelete(path string) error {
 	}
 	defer resp.Body.Close()
 
-	utils.Info(fmt.Sprintf("ESReqHTTPDelete status=%v", resp.StatusCode))
+	utils.Info(fmt.Sprintf("  --> ESReqHTTPDelete status=%v", resp.StatusCode))
 	return nil
 }
 
