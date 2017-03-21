@@ -145,7 +145,7 @@ func createIngestPipeline() error {
 // ESReqHTTPPut basic http put
 func ESReqHTTPPut(api string, query []byte) error {
 	esURL := esURLWoIndex(api)
-	utils.Info(fmt.Sprintf("  ESreqHTTPPut url %v", esURL))
+	utils.Info(fmt.Sprintf("ESreqHTTPPut url %v", esURL))
 	client := &http.Client{
 		Timeout: time.Duration(60 * time.Second),
 	}
@@ -164,7 +164,7 @@ func ESReqHTTPPut(api string, query []byte) error {
 	}
 	defer resp.Body.Close()
 
-	utils.Info(fmt.Sprintf("  --> ESreqHTTPPut response status : %v (%v)", resp.Status, api))
+	utils.Info(fmt.Sprintf("ESreqHTTPPut response status : %v (%v)", resp.Status, api))
 	if resp.StatusCode == 400 {
 		utils.Error(fmt.Sprintf("error of response ESreqHTTPPut Status : %v", resp.Status))
 	}
@@ -183,7 +183,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 	s := time.Now()
 	esURL := esURL(index, apiname)
 
-	utils.Info(fmt.Sprintf("  ESReqHTTPPost url  %v", esURL))
+	utils.Info(fmt.Sprintf("ESReqHTTPPost url  %v", esURL))
 
 	req, err := http.NewRequest("POST", esURL, bytes.NewBuffer(query))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -206,10 +206,6 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 		panic(err)
 	}
 
-	if r.Updated == 0 {
-		return fmt.Errorf("  updated failed updated=%v", r.Updated)
-	}
-
 	utils.Info(fmt.Sprintf("ESReqHTTPPost took: %v updated: %v deleted: %v", time.Since(s), r.Updated, r.Deleted))
 	return nil
 }
@@ -218,7 +214,7 @@ func ESReqHTTPPost(index, apiname string, query []byte) error {
 func ESReqHTTPDelete(path string) error {
 	esURL := esURL(path, "")
 
-	utils.Info(fmt.Sprintf("  ESReqHTTPDelete url %v", esURL))
+	utils.Info(fmt.Sprintf("ESReqHTTPDelete url %v", esURL))
 
 	req, err := http.NewRequest("DELETE", esURL, bytes.NewBuffer([]byte("")))
 	req.Header.Set("Content-KeyType", "application/json")
@@ -232,7 +228,7 @@ func ESReqHTTPDelete(path string) error {
 	}
 	defer resp.Body.Close()
 
-	utils.Info(fmt.Sprintf("  --> ESReqHTTPDelete status=%v", resp.StatusCode))
+	utils.Info(fmt.Sprintf("ESReqHTTPDelete status=%v", resp.StatusCode))
 	return nil
 }
 
