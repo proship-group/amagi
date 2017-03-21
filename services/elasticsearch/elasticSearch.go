@@ -35,15 +35,15 @@ var (
 	DatastoreCollection = "data_stores"
 
 	// IndexNameGlobalSearch elasticsearch index name
-	IndexNameGlobalSearch  = "global_search"
+	IndexNameGlobalSearch = "global_search"
 
 	// TypeNameFullTextSearch elasticsearch index type name of full text search
 	TypeNameFullTextSearch = "fulltext_search"
 	// TypeNameFileSearch elasticsearch index type name of file search
-	TypeNameFileSearch     = "file_search"
+	TypeNameFileSearch = "file_search"
 
 	FieldNameCategory = "category"
-	FieldNameKeyType = "key_type"
+	FieldNameKeyType  = "key_type"
 
 	// IndexNameItem index category name for items
 	IndexNameItems = "items"
@@ -165,13 +165,20 @@ func (req *ESSearchReq) ESAddDocument() error {
 		}
 	}
 
-	_, err := database.ESGetConn().Index().
+	_, id, err := getIDKeyValue(req)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error getIDKeyValue %v", err))
+		return err
+	}
+
+	res, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
+		Id(id).
 		BodyJson(req.BodyJSON).
 		Refresh("true").
 		Do(CreateContext())
-	if err != nil{
+	if err != nil {
 		utils.Error(fmt.Sprintf("error ESAddDocument %v", err))
 		return err
 	}
@@ -179,8 +186,8 @@ func (req *ESSearchReq) ESAddDocument() error {
 	//utils.Pretty(req.BodyJSON, "ES create document")
 	//utils.Pretty(res,"add es document response")
 
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v]",
-		time.Since(s), req.BodyJSON.Category))
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v, id=%v]",
+		time.Since(s), req.BodyJSON.Category, res.Id))
 	return nil
 }
 
@@ -192,6 +199,29 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 	req.IndexName = IndexNameGlobalSearch
 
 	// set delete query key-value
+	key, value, err := getIDKeyValue(req)
+
+	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
+		// for multiple index search query, pass in slice of string
+		Index(strings.Split(req.IndexName, ",")...).
+		Query(elastic.NewBoolQuery().
+			Must(
+				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
+				elastic.NewMatchQuery(key, value),
+			)).
+		Do(CreateContext())
+	if err != nil {
+		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
+		return err
+	}
+
+	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v  [category=%v, %v=%v]",
+		time.Since(s), res.Deleted, req.BodyJSON.Category, key, value))
+	return nil
+}
+
+func getIDKeyValue(req *ESSearchReq) (string, string, error) {
+
 	var key, value string
 	switch req.BodyJSON.Category {
 	case IndexNameItems:
@@ -219,32 +249,10 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 		key = "p_id"
 		value = req.BodyJSON.PID
 	default:
-		return fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category )
+		return "", "", fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category)
 	}
 
-	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
-		// for multiple index search query, pass in slice of string
-		Index(strings.Split(req.IndexName, ",")...).
-		Query(elastic.NewBoolQuery().
-			Must(
-				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
-				elastic.NewMatchQuery(key, value),
-			)).
-		Do(CreateContext())
-	if err != nil {
-		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
-		return err
-	}
-
-	//utils.Pretty(req,"delete documents")
-
-	if res.Deleted == 0 {
-		return fmt.Errorf("deleted: %v", res.Deleted)
-	}
-
-	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v [category=%v]",
-		time.Since(s), req.BodyJSON.Category))
-	return nil
+	return key, value, nil
 }
 
 // ESUpdateDocument update elasticSearch document
