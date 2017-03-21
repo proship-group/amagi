@@ -171,12 +171,11 @@ func setDatabaseName(env config.Environment) error {
 		return nil
 	}
 
-	Db = os.Getenv("APP_MONGODB")
-	if len(Db) == 0 {
-		panic(fmt.Errorf("APP_MONGODB NOT SET"))
+	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
+		Db = dbFromEnv
+		utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
 	}
 
-	utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
 	return nil
 }
 
