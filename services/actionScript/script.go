@@ -24,8 +24,6 @@ func (s *Script) TryScript() error {
 		"data":   s.Data,
 	}
 
-	fmt.Println("sending req")
-
 	var resp map[string]interface{}
 	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", actionScriptHost(), "/try", req, &resp); err != nil {
 		utils.Error(fmt.Sprintf("error TryScript %v", err))
