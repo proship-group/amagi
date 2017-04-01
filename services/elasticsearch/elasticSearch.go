@@ -183,11 +183,8 @@ func (req *ESSearchReq) ESAddDocument() error {
 		return err
 	}
 
-	//utils.Pretty(req.BodyJSON, "ES create document")
-	//utils.Pretty(res,"add es document response")
-
-	utils.Info(fmt.Sprintf("ESaddDocument took: %v [category=%v, id=%v]",
-		time.Since(s), req.BodyJSON.Category, res.Id))
+	utils.Info(fmt.Sprintf("ESaddDocument took: %v version: %v %v/%v/%v [category=%v]",
+		time.Since(s), res.Version, res.Index, res.Type, res.Id, req.BodyJSON.Category))
 	return nil
 }
 
@@ -220,9 +217,8 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 	return nil
 }
 
-func getIDKeyValue(req *ESSearchReq) (string, string, error) {
+func getIDKeyValue(req *ESSearchReq) (key string, value string, err error) {
 
-	var key, value string
 	switch req.BodyJSON.Category {
 	case IndexNameItems:
 		key = "i_id"
@@ -252,7 +248,8 @@ func getIDKeyValue(req *ESSearchReq) (string, string, error) {
 		return "", "", fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category)
 	}
 
-	return key, value, nil
+	err = nil
+	return
 }
 
 // ESUpdateDocument update elasticSearch document
@@ -281,8 +278,10 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 		DefaultOperator("AND").
 		AnalyzeWildcard(true)
 
+	//utils.Pretty(query, "es query")
+
 	searchResult, err := database.ESGetConn().Search().
-		Index(IndexNameGlobalSearch).
+		Index(req.IndexName).
 		Highlight(ResultHighlighter()).
 		Query(query).
 		PostFilter(elastic.NewMatchQuery("w_id", req.UserBasicInfo.WorkspaceID)).
@@ -295,7 +294,8 @@ func (req *ESSearchReq) ESTermQuery(result *elastic.SearchResult) (*elastic.Sear
 
 	//utils.Pretty(searchResult, "Result of ES")
 
-	utils.Info(fmt.Sprintf("ESTermQuery took: %v ms hits: %v", searchResult.TookInMillis, searchResult.Hits.TotalHits))
+	utils.Info(fmt.Sprintf("ESTermQuery took: %v ms hits: %v",
+		searchResult.TookInMillis, searchResult.Hits.TotalHits))
 	return searchResult, nil
 }
 
