@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/getsentry/raven-go"
+
+	netUtils "github.com/b-eee/amagi/api/net"
 )
 
 var (
@@ -16,7 +18,9 @@ var (
 func SendToSentry(msg string) error {
 
 	if os.Getenv(SentryENV) == "1" {
-		raven.CaptureError(fmt.Errorf(msg), nil)
+		raven.CaptureError(fmt.Errorf(msg), map[string]string{
+			"hostname": netUtils.AppHostName(),
+		})
 	}
 
 	return nil
