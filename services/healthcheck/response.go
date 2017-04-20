@@ -1,10 +1,11 @@
 package healthcheck
 
 import (
+	"fmt"
+	"os"
 	"time"
 
-	"os"
-
+	utils "github.com/b-eee/amagi"
 	netUtils "github.com/b-eee/amagi/api/net"
 )
 
@@ -28,4 +29,9 @@ func Healthy() RespHealthCheck {
 		HostName:   netUtils.AppHostName(),
 		AppName:    os.Getenv("APP_NAME"),
 	}
+}
+
+// ResponseLogMessage response logger message
+func ResponseLogMessage(msg string) {
+	utils.Info(fmt.Sprintf("healthCheck success! msg=%v", msg))
 }

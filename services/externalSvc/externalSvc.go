@@ -82,13 +82,13 @@ func HTTPGetRequest(url string, values url.Values) (*http.Response, error) {
 func HTTPGetRequestWResponse(url string, values url.Values, result interface{}) error {
 	res, err := HTTPGetRequest(url, values)
 	if err != nil {
-		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse"))
+		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse url=%v %v", url, err))
 		return err
 	}
 	defer res.Body.Close()
 
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		panic(err)
+		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse on decode url=%v %v", url, err))
 	}
 
 	return nil
