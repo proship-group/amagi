@@ -8,12 +8,10 @@ import (
 
 // GetHealthCheck app healthcheck
 func GetHealthCheck(w http.ResponseWriter, r *http.Request, _ http.HandlerFunc) {
-	ResponseLogMessage("GetHealthCheck")
-	httpd.RespondToJSON(w, Healthy())
+	httpd.RespondToJSON(w, Healthy("GetHealthCheck", ResponseLogMessage))
 }
 
 // NonNextGetHealthCheck non next app healthcheck
 func NonNextGetHealthCheck(w http.ResponseWriter, r *http.Request) {
-	ResponseLogMessage("NonNextGetHealthCheck")
-	httpd.RespondToJSON(w, Healthy())
+	httpd.RespondToJSON(w, Healthy("NonNextGetHealthCheck", ResponseLogMessage))
 }

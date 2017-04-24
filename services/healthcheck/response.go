@@ -17,13 +17,14 @@ type (
 		AppName    string `bson:"app_name" json:"app_name"`
 
 		ResponseTime int           `bson:"response_time" json:"response_time,omitempty"`
-		ResponseDate time.Duration `bson:"response_date" json:"response_date,omitempty"`
-		Online       bool          `bson:"online" json:"online,omitempty"`
+		ResponseDate time.Duration `bson:"-" json:"response_date,omitempty"`
+		Online       string        `bson:"online" json:"online,omitempty"`
 	}
 )
 
 // Healthy healthy response
-func Healthy() RespHealthCheck {
+func Healthy(msg string, callback func(string, time.Time)) RespHealthCheck {
+	callback(msg, time.Now())
 	return RespHealthCheck{
 		StatusCode: 200,
 		HostName:   netUtils.AppHostName(),
@@ -32,6 +33,8 @@ func Healthy() RespHealthCheck {
 }
 
 // ResponseLogMessage response logger message
-func ResponseLogMessage(msg string) {
-	utils.Info(fmt.Sprintf("healthCheck success! msg=%v", msg))
+func ResponseLogMessage(msg string, start time.Time) {
+	if responseLog := os.Getenv("HEALTH_CHECK_LOG"); responseLog == "true" {
+		utils.Info(fmt.Sprintf("healthCheck success took=%v", time.Since(start)))
+	}
 }
