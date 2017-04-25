@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	utils "github.com/b-eee/amagi"
@@ -92,4 +93,31 @@ func HTTPGetRequestWResponse(url string, values url.Values, result interface{}) 
 	}
 
 	return nil
+}
+
+// APIrequestGetter api configctl credentials getter
+func APIrequestGetter(credKey, field string, response interface{}) error {
+	v := url.Values{}
+	v.Add("credential_key", credKey)
+	v.Add("field", field)
+
+	configURL := fmt.Sprintf("http://%v/get_kv/credential/%v", configCtlURL(), os.Getenv("ENV"))
+
+	if err := HTTPGetRequestWResponse(configURL, v, &response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func configCtlURL() string {
+	var configURL string
+	switch os.Getenv("ENV") {
+	case "local":
+		configURL = "localhost:8083"
+	default:
+		configURL = "beee-configctl:8083"
+	}
+
+	return configURL
 }
