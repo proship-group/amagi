@@ -43,3 +43,13 @@ func GetCurrentHostIP() string {
 
 	return host
 }
+
+// AppHostName get app hostname
+func AppHostName() string {
+	host, err := os.Hostname()
+	if err != nil {
+		return "hostname_not_found"
+	}
+
+	return host
+}
