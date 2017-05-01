@@ -32,7 +32,7 @@ func StartNeo4j() {
 
 	db, err := neoism.Connect(setNeo4jHost())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("failed to connect neo4j:%v", err))
 	}
 
 	neo4jConnection = db

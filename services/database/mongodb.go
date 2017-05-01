@@ -51,10 +51,8 @@ func MongodbStart() {
 	mongoDBDialInfo := buildMongodBconn(cfe, host)
 	session, err := mongodb.DialWithInfo(&mongoDBDialInfo)
 	if err != nil {
-		// fmt.Println(err)
-		panic(err)
+		panic(fmt.Sprintf("failed to connect mongodb:%v", err))
 	}
-	utils.Info(fmt.Sprintf("connected to mongodb... %v", cfe.Host))
 	MongodbSession = session
 
 	if os.Getenv("MONGODB_DEBUG") == "1" {
@@ -65,6 +63,7 @@ func MongodbStart() {
 	}
 
 	setDatabaseName(cfe)
+	utils.Info(fmt.Sprintf("connected to mongodb... %v(db:%s)", host, Db))
 
 	// MongodbSession.SetMode(mongodb.Monotonic, true)
 	// PRINT MONGODB CONNECTED/LIVE SERVERS
@@ -155,7 +154,7 @@ func SessionCopy() *mongodb.Session {
 }
 
 func printLiveServers(session *mongodb.Session) {
-	utils.Info(fmt.Sprintf("liveServers %v", session.LiveServers()))
+	utils.Info(fmt.Sprintf("mongodb liveServers %v", session.LiveServers()))
 }
 
 // BeginMongo begin mongodb session with time now
@@ -174,9 +173,10 @@ func setDatabaseName(env config.Environment) error {
 	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
 		Db = dbFromEnv
 		utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
+		return nil
 	}
 
-	return nil
+	panic("mongodb database name is not set")
 }
 
 // MongoInsert can be used as generic slice data collection insert to mongodb
