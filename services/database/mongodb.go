@@ -136,6 +136,16 @@ func setMongodbHost() (config.Environment, string) {
 	return env, fmt.Sprintf("%v", env.Host)
 }
 
+func IsConnected() bool {
+	connected := true
+
+	if MongodbSession == nil {
+		connected = false
+	}
+
+	return connected
+}
+
 // SessionCopy make copy of a mongodb session
 func SessionCopy() *mongodb.Session {
 	MongodbSession.Ping()
