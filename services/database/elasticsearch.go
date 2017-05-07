@@ -22,7 +22,7 @@ func StartElasticSearch() error {
 
 	esURL := env.Host
 
-	utils.Info(fmt.Sprintf("connecting to esURL=%v", esURL))
+	utils.Info(fmt.Sprintf("connecting to elasticsearch.. %v", esURL))
 
 	client, err := elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
 		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
@@ -36,7 +36,7 @@ func StartElasticSearch() error {
 
 	ESConn = client
 
-	utils.Info(fmt.Sprintf("connected to esURL=%v", esURL))
+	utils.Info(fmt.Sprintf("connected to elasticsearch... %v", esURL))
 	return nil
 }
 

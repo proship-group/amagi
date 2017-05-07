@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -33,11 +32,7 @@ func OpenMssqlConn() *gorm.DB {
 	utils.Info(fmt.Sprintf("connecting to MySQL.. %v", ConnStr()))
 	db, err := gorm.Open("mysql", ConnStr())
 	if err != nil {
-		utils.Error(fmt.Sprintf("failed to connect database"))
-		// TODO panic if connection failed!!
-		// HANDLE THIS!
-		// panic(err)
-		log.Fatal(err)
+		panic(fmt.Sprintf("failed to connect mysql:%v", err))
 	}
 
 	db.DB().SetMaxIdleConns(mssqlMAXIdleConns)
