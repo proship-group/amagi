@@ -136,6 +136,7 @@ func setMongodbHost() (config.Environment, string) {
 	return env, fmt.Sprintf("%v", env.Host)
 }
 
+// IsConnected Check connected
 func IsConnected() bool {
 	connected := true
 
