@@ -26,9 +26,11 @@ func Init(host slack.Host) {
 }
 
 // Info print to stdout our message
-func Info(msg string) {
+func Info(msg string) error {
 	str := fmt.Sprintf("%s %s", timeLoglevel("i"), msg)
 	fmt.Println(str)
+
+	return nil
 }
 
 // Warn print to stdout
@@ -38,11 +40,12 @@ func Warn(msg string) {
 }
 
 // Error print to stdout
-func Error(msg string) {
+func Error(msg string) error {
 	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
 	fmt.Println(str)
 
 	sentry.SendToSentry(msg)
+	return fmt.Errorf(str)
 }
 
 // Fatal fatal print to stdout
