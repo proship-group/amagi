@@ -37,11 +37,6 @@ func newGoogleStorage() *googleStorage {
 // Save save in cloud storage
 func (s *googleStorage) Save(r io.Reader, bucketName, objectName string) (file *CloudStorageFile, err error) {
 	aclObject := []*storage.ObjectAccessControl{}
-	aclObject = append(aclObject, &storage.ObjectAccessControl{
-		Bucket: bucketName,
-		Role:   "OWNER",
-		Entity: "allAuthenticatedUsers",
-		Object: objectName})
 	storeData := &storage.Object{Name: objectName, Acl: aclObject}
 
 	res, err := s.storageService.Objects.Insert(bucketName, storeData).Media(r).Do()
