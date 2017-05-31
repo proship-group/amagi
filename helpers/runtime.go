@@ -23,3 +23,20 @@ func LookPath(binName string) (string, error) {
 
 	return path, nil
 }
+
+// OSShellCommand get and set shell command for win/linux/osx
+func OSShellCommand() string {
+	var cmd string
+	switch CurrentOSVer() {
+	case "windows":
+		path, err := LookPath("sh")
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmd = path
+	default:
+		cmd = "/bin/bash"
+	}
+
+	return cmd
+}

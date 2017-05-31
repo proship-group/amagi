@@ -77,7 +77,6 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		Addrs:    mongodbHosts,
 		Timeout:  10 * time.Second,
 		Source:   "admin",
-		Database: cfe.Database,
 		Username: cfe.Username,
 		Password: cfe.Password,
 
@@ -165,7 +164,8 @@ func SessionCopy() *mongodb.Session {
 }
 
 func printLiveServers(session *mongodb.Session) {
-	utils.Info(fmt.Sprintf("mongodb liveServers %v", session.LiveServers()))
+	dbs, _ := session.DatabaseNames()
+	utils.Info(fmt.Sprintf("mongodb liveServers=%v db=%v", session.LiveServers(), dbs))
 }
 
 // BeginMongo begin mongodb session with time now
@@ -180,6 +180,8 @@ func setDatabaseName(env config.Environment) error {
 		Db = env.Database
 		return nil
 	}
+
+	fmt.Println(os.Getenv("APP_MONGODB"), "APP_MONGODB")
 
 	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
 		Db = dbFromEnv

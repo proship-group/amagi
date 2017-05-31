@@ -19,6 +19,10 @@ func GinHTTPError(c *gin.Context, err error) error {
 		return err
 	}
 
+	if flag := os.Getenv(SendHTTPErrorEnv); flag == "false" {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500})
+		return err
+	}
 	c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "err": err.Error()})
 	return nil
 }
