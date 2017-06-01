@@ -148,7 +148,8 @@ func IsConnected() bool {
 
 // SessionCopy make copy of a mongodb session
 func SessionCopy() *mongodb.Session {
-	MongodbSession.Ping()
+	// TRIAL prevent connection drop on master reschedule(on replica) -JP
+	MongodbSession.Refresh()
 
 	sc := MongodbSession.Copy()
 
@@ -176,16 +177,16 @@ func BeginMongo() (time.Time, *mongodb.Session) {
 
 // setDatabaseName set database name
 func setDatabaseName(env config.Environment) error {
-	if env.Database != "" {
-		Db = env.Database
-		return nil
-	}
-
 	fmt.Println(os.Getenv("APP_MONGODB"), "APP_MONGODB")
 
 	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
 		Db = dbFromEnv
 		utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
+		return nil
+	}
+
+	if env.Database != "" {
+		Db = env.Database
 		return nil
 	}
 
