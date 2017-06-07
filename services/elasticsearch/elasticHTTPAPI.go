@@ -61,7 +61,7 @@ func (req *ESSearchReq) ESHTTPItemUpdate() error {
 
 // ESDeleteHTTPByQuery es delete http api
 func (req *ESSearchReq) ESDeleteHTTPByQuery(query map[string]interface{}) error {
-
+	s := time.Now()
 	str, err := json.Marshal(query)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error ESDeleteHTTPByQuery json marshal %v", err))
@@ -73,6 +73,7 @@ func (req *ESSearchReq) ESDeleteHTTPByQuery(query map[string]interface{}) error 
 		return err
 	}
 
+	utils.Info(fmt.Sprintf("ESDeleteHTTPByQuery took: %v", time.Since(s)))
 	return nil
 }
 
@@ -102,13 +103,14 @@ func putFileIngestAttachment(di DistinctItem, fileBase64 string) error {
 			"p_id": "%v",
 			"d_id": "%v",
 			"i_id": "%v",
+			"f_id": "%v",
 			"file_id": "%v",
 			"category": "%v",
 			"title": "%v",
 			"value": "%v",
 			"keys": "%v"
 		}
-	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FileID, di.Category, di.Title, di.Value, di.Keys)
+	`, fileBase64, di.WID, di.PID, di.DID, di.IID, di.FID, di.FileID, di.Category, di.Title, di.Value, di.Keys)
 
 	if err := ESReqHTTPPut(fmt.Sprintf("%v/%v/%v?pipeline=attachment",
 		IndexNameGlobalSearch, TypeNameFileSearch, di.FileID), []byte(query)); err != nil {
