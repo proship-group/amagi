@@ -32,3 +32,9 @@ func GinHTTPOk(c *gin.Context, resp gin.H) error {
 	c.JSON(http.StatusOK, resp)
 	return nil
 }
+
+// GinJSONResponse gin json response
+func GinJSONResponse(c *gin.Context, resp interface{}) error {
+	c.JSON(http.StatusOK, resp)
+	return nil
+}
