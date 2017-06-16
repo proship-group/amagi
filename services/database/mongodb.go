@@ -39,6 +39,15 @@ var (
 	SumJournalCol = "sum_journal"
 
 	JournalSource = "journal_source"
+
+	// MongodbHostsWithPortENV mongodb host with port from env
+	MongodbHostsWithPortENV = "MONGODB_HOST_ENV"
+
+	// MongodbHostUserENV mongodb host user Env name
+	MongodbHostUserENV = "MONGODB_USER"
+
+	// MongodbPassENV mongodb password env
+	MongodbPassENV = "MONGODB_PASS"
 )
 
 // MongodbStart start connecting to mongodb
@@ -132,7 +141,23 @@ func setMongodbHost() (config.Environment, string) {
 		// env.Port = "27017"
 	}
 
+	// override mongodb env from configctl if set from environments
+	if fromHost, err := setHostFromENVS(&env); fromHost && err == nil {
+		return env, fmt.Sprintf("%v", env.Host)
+	}
+
 	return env, fmt.Sprintf("%v", env.Host)
+}
+
+func setHostFromENVS(env *config.Environment) (bool, error) {
+	if host := os.Getenv(MongodbHostsWithPortENV); len(host) != 0 {
+		env.Host = host
+		env.Password = os.Getenv(MongodbPassENV)
+		env.Username = os.Getenv(MongodbHostUserENV)
+		return true, utils.Info(fmt.Sprintf("setHostFomrENVS is true"))
+	}
+
+	return false, utils.Info(fmt.Sprintf("setHostFomrENVS is false"))
 }
 
 // IsConnected Check connected
