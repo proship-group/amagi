@@ -39,6 +39,15 @@ var (
 	SumJournalCol = "sum_journal"
 
 	JournalSource = "journal_source"
+
+	// MongodbHostsWithPortENV mongodb host with port from env
+	MongodbHostsWithPortENV = "MONGODB_HOST_ENV"
+
+	// MongodbHostUserENV mongodb host user Env name
+	MongodbHostUserENV = "MONGODB_USER"
+
+	// MongodbPassENV mongodb password env
+	MongodbPassENV = "MONGODB_PASS"
 )
 
 // MongodbStart start connecting to mongodb
@@ -77,7 +86,6 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		Addrs:    mongodbHosts,
 		Timeout:  10 * time.Second,
 		Source:   "admin",
-		Database: cfe.Database,
 		Username: cfe.Username,
 		Password: cfe.Password,
 
@@ -133,7 +141,23 @@ func setMongodbHost() (config.Environment, string) {
 		// env.Port = "27017"
 	}
 
+	// override mongodb env from configctl if set from environments
+	if fromHost, err := setHostFromENVS(&env); fromHost && err == nil {
+		return env, fmt.Sprintf("%v", env.Host)
+	}
+
 	return env, fmt.Sprintf("%v", env.Host)
+}
+
+func setHostFromENVS(env *config.Environment) (bool, error) {
+	if host := os.Getenv(MongodbHostsWithPortENV); len(host) != 0 {
+		env.Host = host
+		env.Password = os.Getenv(MongodbPassENV)
+		env.Username = os.Getenv(MongodbHostUserENV)
+		return true, utils.Info(fmt.Sprintf("setHostFomrENVS is true"))
+	}
+
+	return false, utils.Info(fmt.Sprintf("setHostFomrENVS is false"))
 }
 
 // IsConnected Check connected
@@ -149,7 +173,8 @@ func IsConnected() bool {
 
 // SessionCopy make copy of a mongodb session
 func SessionCopy() *mongodb.Session {
-	MongodbSession.Ping()
+	// TRIAL prevent connection drop on master reschedule(on replica) -JP
+	MongodbSession.Refresh()
 
 	sc := MongodbSession.Copy()
 
@@ -165,7 +190,8 @@ func SessionCopy() *mongodb.Session {
 }
 
 func printLiveServers(session *mongodb.Session) {
-	utils.Info(fmt.Sprintf("mongodb liveServers %v", session.LiveServers()))
+	dbs, _ := session.DatabaseNames()
+	utils.Info(fmt.Sprintf("mongodb liveServers=%v db=%v", session.LiveServers(), dbs))
 }
 
 // BeginMongo begin mongodb session with time now
@@ -176,14 +202,16 @@ func BeginMongo() (time.Time, *mongodb.Session) {
 
 // setDatabaseName set database name
 func setDatabaseName(env config.Environment) error {
-	if env.Database != "" {
-		Db = env.Database
-		return nil
-	}
+	fmt.Println(os.Getenv("APP_MONGODB"), "APP_MONGODB")
 
 	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
 		Db = dbFromEnv
 		utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
+		return nil
+	}
+
+	if env.Database != "" {
+		Db = env.Database
 		return nil
 	}
 
