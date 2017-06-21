@@ -135,10 +135,13 @@ func splitMongodbInstances(instances string) []string {
 }
 
 func setMongodbHost() (config.Environment, string) {
-	env := config.GetDatabaseConf("mongodb")
-	if os.Getenv("HOST") != "" {
-		env.Host = os.Getenv("HOST")
-		// env.Port = "27017"
+	var env config.Environment
+	if len(os.Getenv(MongodbHostsWithPortENV)) == 0 {
+		env = config.GetDatabaseConf("mongodb")
+		if os.Getenv("HOST") != "" {
+			env.Host = os.Getenv("HOST")
+			// env.Port = "27017"
+		}
 	}
 
 	// override mongodb env from configctl if set from environments
