@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/b-eee/amagi/services/configctl"
 	"gopkg.in/olivere/elastic.v5"
@@ -19,17 +20,22 @@ var (
 // StartElasticSearch start elasticsearch connections
 func StartElasticSearch() error {
 	env := configctl.GetDBCfgStngWEnvName("elasticsearch", os.Getenv("ENV"))
-
 	esURL := env.Host
-
 	utils.Info(fmt.Sprintf("connecting to elasticsearch.. %v", esURL))
 
-	client, err := elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
-		elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
-		elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
-		elastic.SetBasicAuth(env.Username, env.Password))
+	var client *elastic.Client
+	var err error
+	if debug, e := strconv.ParseBool(os.Getenv("DEBUG_ELASTIC")); e == nil && debug {
+		client, err = elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
+			elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
+			elastic.SetInfoLog(log.New(os.Stdout, "", log.LstdFlags)),
+			elastic.SetBasicAuth(env.Username, env.Password))
+	} else {
+		client, err = elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false),
+			elastic.SetErrorLog(log.New(os.Stderr, "ELASTIC ", log.LstdFlags)),
+			elastic.SetBasicAuth(env.Username, env.Password))
+	}
 	if err != nil {
-
 		utils.Fatal(fmt.Sprintf("error StartElasticSearch %v", err))
 		return err
 	}
