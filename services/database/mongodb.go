@@ -193,8 +193,7 @@ func SessionCopy() *mongodb.Session {
 }
 
 func printLiveServers(session *mongodb.Session) {
-	dbs, _ := session.DatabaseNames()
-	utils.Info(fmt.Sprintf("mongodb liveServers=%v db=%v", session.LiveServers(), dbs))
+	utils.Info(fmt.Sprintf("mongodb liveServers=%v", session.LiveServers()))
 }
 
 // BeginMongo begin mongodb session with time now
