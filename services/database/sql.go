@@ -18,8 +18,8 @@ var (
 	// SQLDB sql db connection
 	SQLDB *gorm.DB
 
-	mssqlMAXIdleConns          = 100
-	mssqlMaxOpenConns          = 1000
+	mssqlMAXIdleConns          = 1000
+	mssqlMaxOpenConns          = 10000
 	mssqlConnMaxLifeTime int64 = 120
 	reportDelaySec             = 30
 )
