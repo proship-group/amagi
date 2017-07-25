@@ -2,15 +2,13 @@ package database
 
 import (
 	"fmt"
+	"os"
 	"time"
 
-	"apicore/config"
+	utils "github.com/b-eee/amagi"
+	config "github.com/b-eee/amagi/services/configctl"
 
 	"github.com/garyburd/redigo/redis"
-
-	"os"
-
-	utils "github.com/b-eee/amagi"
 )
 
 var (
