@@ -34,3 +34,9 @@ func GinJSONResponse(c *gin.Context, resp interface{}) error {
 	c.JSON(http.StatusOK, resp)
 	return nil
 }
+
+// GinJSONStatusResponse gin json response
+func GinJSONStatusResponse(c *gin.Context, status int, resp interface{}) error {
+	c.JSON(status, resp)
+	return nil
+}
