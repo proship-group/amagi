@@ -20,6 +20,8 @@ func getMIOCredentials() configctl.Environment {
 func MIOCreateClient() (*minio.Client, error) {
 	env := getMIOCredentials()
 
+	fmt.Println(env)
+	fmt.Println("===============================")
 	client, err := minio.New(env.Host, env.MIOAccessKeyID, env.MIOSecretAccessKey, false)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error MIOCreateClient %v", err))
@@ -31,7 +33,12 @@ func MIOCreateClient() (*minio.Client, error) {
 
 // MIOPutObject put object to minio with io.Reader
 func MIOPutObject(fo FileObject) (interface{}, error) {
-	client, _ := MIOCreateClient()
+	fmt.Println(1)
+	client, err := MIOCreateClient()
+	if err != nil {
+		fmt.Println("--------------")
+		return nil, err
+	}
 
 	if _, err := client.PutObject(fo.BucketName, fo.ObjectName, fo.File, "application/octet-stream"); err != nil {
 		utils.Error(fmt.Sprintf("error MIOPutObject %v", err))

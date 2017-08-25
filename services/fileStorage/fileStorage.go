@@ -60,3 +60,9 @@ func MIOExtractAndStoreObject(object interface{}, filepath string) error {
 
 	return nil
 }
+
+// InitializeServerStorages initliaze or create client to server storages for server common storages
+func InitializeServerStorages() error {
+
+	return nil
+}
