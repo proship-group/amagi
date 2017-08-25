@@ -27,11 +27,24 @@ func ExecuteCypherQuery(query neoism.CypherQuery) error {
 
 	if flag, err := strconv.Atoi(os.Getenv(cypherDebugFlag)); flag == CypherDebugDefault || err != nil {
 		str = append(str, fmt.Sprintf("%v", query))
+		utils.Info(strings.Join(str, " "))
 	}
-	utils.Info(strings.Join(str, " "))
 
-	// utils.Info(fmt.Sprintf("ExecuteCypherQuery took: %v", time.Since(s)))
 	return err
+}
+
+// TransacQuery transaction public query exec
+func TransactionBegin(qs []*neoism.CypherQuery)  (*neoism.Tx, error)  {
+
+	if flag, err := strconv.Atoi(os.Getenv(cypherDebugFlag)); flag == CypherDebugDefault || err != nil {
+		str := []string{fmt.Sprintf("Begin Transactional Cypher ")}
+		for key, q := range qs {
+			str = append(str, fmt.Sprintf("\n%v >> %v", key, q))
+		}
+		utils.Info(strings.Join(str, " "))
+	}
+
+	return Neo4jDB.Begin(qs)
 }
 
 // TransactionErrRlbk display transaction error and send rollback

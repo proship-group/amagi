@@ -21,6 +21,7 @@ func configCtlURL() string {
 }
 
 // APIrequestGetter api configctl credentials getter
+// TODO deprecate moved to amagi -JP
 func APIrequestGetter(credKey, field string) (map[string]string, error) {
 	v := url.Values{}
 	v.Add("credential_key", credKey)

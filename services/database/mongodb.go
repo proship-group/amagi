@@ -39,6 +39,15 @@ var (
 	SumJournalCol = "sum_journal"
 
 	JournalSource = "journal_source"
+
+	// MongodbHostsWithPortENV mongodb host with port from env
+	MongodbHostsWithPortENV = "MONGODB_HOST_ENV"
+
+	// MongodbHostUserENV mongodb host user Env name
+	MongodbHostUserENV = "MONGODB_USER"
+
+	// MongodbPassENV mongodb password env
+	MongodbPassENV = "MONGODB_PASS"
 )
 
 // MongodbStart start connecting to mongodb
@@ -51,10 +60,8 @@ func MongodbStart() {
 	mongoDBDialInfo := buildMongodBconn(cfe, host)
 	session, err := mongodb.DialWithInfo(&mongoDBDialInfo)
 	if err != nil {
-		// fmt.Println(err)
-		panic(err)
+		panic(fmt.Sprintf("failed to connect mongodb:%v", err))
 	}
-	utils.Info(fmt.Sprintf("connected to mongodb... %v", cfe.Host))
 	MongodbSession = session
 
 	if os.Getenv("MONGODB_DEBUG") == "1" {
@@ -65,6 +72,7 @@ func MongodbStart() {
 	}
 
 	setDatabaseName(cfe)
+	utils.Info(fmt.Sprintf("connected to mongodb... %v(db:%s)", host, Db))
 
 	// MongodbSession.SetMode(mongodb.Monotonic, true)
 	// PRINT MONGODB CONNECTED/LIVE SERVERS
@@ -78,7 +86,6 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		Addrs:    mongodbHosts,
 		Timeout:  10 * time.Second,
 		Source:   "admin",
-		Database: cfe.Database,
 		Username: cfe.Username,
 		Password: cfe.Password,
 
@@ -89,7 +96,6 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 		conn.Addrs = []string{os.Getenv("HOST")}
 	}
 
-	fmt.Println(conn, "==============")
 	// if os.Getenv("SECURE") == "true" {
 	// 	conn.Username = cfe.Username
 	// 	conn.Password = cfe.Password
@@ -129,18 +135,49 @@ func splitMongodbInstances(instances string) []string {
 }
 
 func setMongodbHost() (config.Environment, string) {
-	env := config.GetDatabaseConf("mongodb")
-	if os.Getenv("HOST") != "" {
-		env.Host = os.Getenv("HOST")
-		// env.Port = "27017"
+	var env config.Environment
+	if len(os.Getenv(MongodbHostsWithPortENV)) == 0 {
+		env = config.GetDatabaseConf("mongodb")
+		if os.Getenv("HOST") != "" {
+			env.Host = os.Getenv("HOST")
+			// env.Port = "27017"
+		}
+	}
+
+	// override mongodb env from configctl if set from environments
+	if fromHost, err := setHostFromENVS(&env); fromHost && err == nil {
+		return env, fmt.Sprintf("%v", env.Host)
 	}
 
 	return env, fmt.Sprintf("%v", env.Host)
 }
 
+func setHostFromENVS(env *config.Environment) (bool, error) {
+	if host := os.Getenv(MongodbHostsWithPortENV); len(host) != 0 {
+		env.Host = host
+		env.Password = os.Getenv(MongodbPassENV)
+		env.Username = os.Getenv(MongodbHostUserENV)
+		return true, utils.Info(fmt.Sprintf("setHostFomrENVS is true"))
+	}
+
+	return false, utils.Info(fmt.Sprintf("setHostFomrENVS is false"))
+}
+
+// IsConnected Check connected
+func IsConnected() bool {
+	connected := true
+
+	if MongodbSession == nil {
+		connected = false
+	}
+
+	return connected
+}
+
 // SessionCopy make copy of a mongodb session
 func SessionCopy() *mongodb.Session {
-	MongodbSession.Ping()
+	// TRIAL prevent connection drop on master reschedule(on replica) -JP
+	MongodbSession.Refresh()
 
 	sc := MongodbSession.Copy()
 
@@ -150,20 +187,13 @@ func SessionCopy() *mongodb.Session {
 	// https://godoc.org/labix.org/v2/mgo#Session.SetSafe
 	// W: 2  atleast two instances confirm of writes
 	sc.SetSafe(&mongodb.Safe{WMode: "majority", W: ensureMaxWrite, FSync: true})
-
-	// sc.Login(&mongodb.Credential{
-	// 	Username: "jeanepaul",
-	// 	Password: "jinpol",
-	// })
-
 	sc.SetSyncTimeout(maxSyncTimeout * time.Second)
-
 	sc.SetSocketTimeout(maxSyncTimeout * time.Hour)
 	return sc
 }
 
 func printLiveServers(session *mongodb.Session) {
-	utils.Info(fmt.Sprintf("liveServers %v", session.LiveServers()))
+	utils.Info(fmt.Sprintf("mongodb liveServers=%v", session.LiveServers()))
 }
 
 // BeginMongo begin mongodb session with time now
@@ -174,18 +204,20 @@ func BeginMongo() (time.Time, *mongodb.Session) {
 
 // setDatabaseName set database name
 func setDatabaseName(env config.Environment) error {
+	fmt.Println(os.Getenv("APP_MONGODB"), "APP_MONGODB")
+
+	if dbFromEnv := os.Getenv("APP_MONGODB"); len(dbFromEnv) != 0 {
+		Db = dbFromEnv
+		utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
+		return nil
+	}
+
 	if env.Database != "" {
 		Db = env.Database
 		return nil
 	}
 
-	Db = os.Getenv("APP_MONGODB")
-	if len(Db) == 0 {
-		panic(fmt.Errorf("APP_MONGODB NOT SET"))
-	}
-
-	utils.Info(fmt.Sprintf("APP_MONGODB set to=%v", Db))
-	return nil
+	panic("mongodb database name is not set")
 }
 
 // MongoInsert can be used as generic slice data collection insert to mongodb

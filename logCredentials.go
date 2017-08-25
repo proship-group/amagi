@@ -1,12 +1,11 @@
 package amagi
 
 import (
-	// "fmt"
 	"fmt"
 	"log"
 	"os"
-	// "github.com/b-eee/amagi"
-	"github.com/b-eee/amagi/api/pubnub"
+
+	"github.com/b-eee/amagi/api/net"
 	"github.com/b-eee/amagi/api/slack"
 	"github.com/joho/godotenv"
 )
@@ -25,7 +24,7 @@ func InitLogCredentials() slack.Host {
 		TokenID:   os.Getenv("SLACK_TOKEN"),
 		ChannelID: os.Getenv("SLACK_CHANNEL_ID"),
 		Hostname: func() string {
-			return pubnub.GetCurrentHostIP()
+			return net.GetCurrentHostIP()
 		},
 		Env: os.Getenv("ENV"),
 
@@ -52,5 +51,11 @@ func getCwd() string {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	// if path is root, return empty instead
+	if pwd == "/" {
+		pwd = ""
+	}
+
 	return pwd
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	utils "github.com/b-eee/amagi"
@@ -68,9 +69,12 @@ func GenericHTTPRequesterWResp(method, scheme, host, url string, data interface{
 
 // HTTPGetRequest HTTP get Request generic function
 func HTTPGetRequest(url string, values url.Values) (*http.Response, error) {
-
 	reqURL := fmt.Sprintf("%v?%v", url, values.Encode())
-	resp, err := http.Get(reqURL)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", reqURL, nil)
+	req.Header.Add("Authorization", "")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error HTTPGetRequest %v", err))
 		return resp, err
@@ -82,14 +86,41 @@ func HTTPGetRequest(url string, values url.Values) (*http.Response, error) {
 func HTTPGetRequestWResponse(url string, values url.Values, result interface{}) error {
 	res, err := HTTPGetRequest(url, values)
 	if err != nil {
-		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse"))
+		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse url=%v %v", url, err))
 		return err
 	}
 	defer res.Body.Close()
 
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		panic(err)
+		utils.Error(fmt.Sprintf("error HTTPGetRequestWResponse on decode url=%v %v", url, err))
 	}
 
 	return nil
+}
+
+// APIrequestGetter api configctl credentials getter
+func APIrequestGetter(credKey, field string, response interface{}) error {
+	v := url.Values{}
+	v.Add("credential_key", credKey)
+	v.Add("field", field)
+
+	configURL := fmt.Sprintf("http://%v/get_kv/credential/%v", configCtlURL(), os.Getenv("ENV"))
+
+	if err := HTTPGetRequestWResponse(configURL, v, &response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func configCtlURL() string {
+	var configURL string
+	switch os.Getenv("ENV") {
+	case "local":
+		configURL = "localhost:8083"
+	default:
+		configURL = "beee-configctl:8083"
+	}
+
+	return configURL
 }

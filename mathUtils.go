@@ -30,3 +30,25 @@ func ToFixed(num float64, precision int) float64 {
 func BytesToMegabyte(bytes int64, precision int) float64 {
 	return ToFixed(IntToFloat(bytes)/BtoMB, precision)
 }
+
+// GroupBigSlices group big slices of array to chunks
+func GroupBigSlices(b int, a ...interface{}) [][]interface{} {
+	var c [][]interface{}
+	for i := 0; i < len(a); i += b {
+		if i+b > len(a) {
+			c = append(c, a[i:])
+		} else {
+			c = append(c, a[i:i+b])
+		}
+	}
+	return c
+}
+
+// mapObjToInterface convert map of slice to slices of interface for bulk
+func mapObjToInterface(objMap ...map[string]interface{}) []interface{} {
+	var x []interface{}
+	for _, item := range objMap {
+		x = append(x, item)
+	}
+	return x
+}

@@ -2,11 +2,11 @@ package database
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
 
 	utils "github.com/b-eee/amagi"
 	config "github.com/b-eee/amagi/services/configctl"
@@ -18,8 +18,8 @@ var (
 	// SQLDB sql db connection
 	SQLDB *gorm.DB
 
-	mssqlMAXIdleConns          = 100
-	mssqlMaxOpenConns          = 1000
+	mssqlMAXIdleConns          = 1000
+	mssqlMaxOpenConns          = 10000
 	mssqlConnMaxLifeTime int64 = 120
 	reportDelaySec             = 30
 )
@@ -29,15 +29,10 @@ func OpenMssqlConn() *gorm.DB {
 	defer utils.ExceptionDump()
 
 	s := time.Now()
-	utils.Info(fmt.Sprintf("connecting to MySQL.. %v", connStr()))
-	//fmt.Println(connStr())
-	db, err := gorm.Open("mysql", connStr())
+	utils.Info(fmt.Sprintf("connecting to MySQL.. %v", ConnStr()))
+	db, err := gorm.Open("mysql", ConnStr())
 	if err != nil {
-		utils.Error(fmt.Sprintf("failed to connect database"))
-		// TODO panic if connection failed!!
-		// HANDLE THIS!
-		// panic(err)
-		log.Fatal(err)
+		panic(fmt.Sprintf("failed to connect mysql:%v", err))
 	}
 
 	db.DB().SetMaxIdleConns(mssqlMAXIdleConns)
@@ -55,6 +50,7 @@ func OpenMssqlConn() *gorm.DB {
 }
 
 // StartGormMssql start gorm mysql connection
+// TODO RENAME TO SQL -JP
 func StartGormMssql(initializeTable func(sqlDB *gorm.DB)) {
 	defer utils.ExceptionDump()
 
@@ -101,7 +97,8 @@ func startMysql() {
 	utils.Info("start mysql")
 }
 
-func connStr() string {
+// ConnStr construct sql connection string
+func ConnStr() string {
 	return buildMySQLConnStr()
 }
 

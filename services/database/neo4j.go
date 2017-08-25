@@ -13,8 +13,6 @@ var (
 
 	// Neo4jDB public neo4j connection
 	Neo4jDB *neoism.Database
-
-	neo4jHost = "http://neo4j:jinpol0405@localhost:7474/db/data"
 )
 
 // ProjectIssueRelation project relationsship query result
@@ -32,7 +30,7 @@ func StartNeo4j() {
 
 	db, err := neoism.Connect(setNeo4jHost())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("failed to connect neo4j:%v", err))
 	}
 
 	neo4jConnection = db
