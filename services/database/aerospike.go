@@ -24,8 +24,10 @@ type (
 		SetName   string
 		Key       interface{}
 		ASKey     *as.Key
-		Objects   struct{}
+		Objects   interface{}
 		Bins      []string
+
+		Record *as.Record
 	}
 )
 
@@ -80,7 +82,14 @@ func ASReadKey(asQuery ASQuery) error {
 		return err
 	}
 
-	_ = record
+	asQuery.Record = record
+
+	return nil
+}
+
+// ASReadFromKey aerospike read value from key with return value reference
+func ASReadFromKey(asQuery *ASQuery) error {
+
 	return nil
 }
 
