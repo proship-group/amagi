@@ -30,13 +30,13 @@ type (
 )
 
 // StartAerospike start aerospike connection
-func StartAerospike() error {
+func StartAerospike() {
 	asHost := getAerospikeDBHost()
 	utils.Info(fmt.Sprintf("aerospike connection to -->> %v", asHost))
 	client, err := as.NewClient(asHost, 3000)
 	if err != nil {
-		utils.Error(fmt.Sprintf("error StartAerospike %v", err))
-		return err
+		utils.Error(fmt.Sprintf("error StartAerospike connection %v", err))
+		return
 	}
 
 	var buf bytes.Buffer
@@ -46,7 +46,7 @@ func StartAerospike() error {
 
 	ASClient = client
 	utils.Info(fmt.Sprintf("aerospike connected to %v", asHost))
-	return nil
+	return
 }
 
 func getAerospikeDBHost() string {
@@ -70,8 +70,7 @@ func ASWriteObject(asQuery ASQuery) error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ASWriteObject took: %v", time.Since(s)))
-	return nil
+	return utils.Info(fmt.Sprintf("ASWriteObject took: %v", time.Since(s)))
 }
 
 // ASReadKey aerospike read single or multiple bins from key

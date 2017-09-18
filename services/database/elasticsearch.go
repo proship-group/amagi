@@ -18,7 +18,7 @@ var (
 )
 
 // StartElasticSearch start elasticsearch connections
-func StartElasticSearch() error {
+func StartElasticSearch() {
 	env := configctl.GetDBCfgStngWEnvName("elasticsearch", os.Getenv("ENV"))
 	esURL := env.Host
 	utils.Info(fmt.Sprintf("connecting to elasticsearch.. %v", esURL))
@@ -37,13 +37,12 @@ func StartElasticSearch() error {
 	}
 	if err != nil {
 		utils.Fatal(fmt.Sprintf("error StartElasticSearch %v", err))
-		return err
+		panic(err)
 	}
 
 	ESConn = client
 
 	utils.Info(fmt.Sprintf("connected to elasticsearch... %v", esURL))
-	return nil
 }
 
 // ESGetConn get elasticsearch connection

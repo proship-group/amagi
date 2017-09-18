@@ -69,9 +69,12 @@ func GenericHTTPRequesterWResp(method, scheme, host, url string, data interface{
 
 // HTTPGetRequest HTTP get Request generic function
 func HTTPGetRequest(url string, values url.Values) (*http.Response, error) {
-
 	reqURL := fmt.Sprintf("%v?%v", url, values.Encode())
-	resp, err := http.Get(reqURL)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", reqURL, nil)
+	req.Header.Add("Authorization", "")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error HTTPGetRequest %v", err))
 		return resp, err

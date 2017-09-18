@@ -52,3 +52,17 @@ func ImporterURL(port int) string {
 	}
 	return importerURL
 }
+
+// ApicoreURL apicore cluster/dev URL
+func ApicoreURL(port int) string {
+	var importerURL string
+	switch os.Getenv("ENV") {
+	case "local":
+		importerURL = fmt.Sprintf("localhost:%v", port)
+	case "docker":
+		importerURL = fmt.Sprintf("apicore:%v", port)
+	default:
+		importerURL = fmt.Sprintf("beee-apicore:%v", port)
+	}
+	return importerURL
+}
