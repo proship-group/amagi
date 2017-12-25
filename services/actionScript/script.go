@@ -3,6 +3,7 @@ package actionScript
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/b-eee/amagi/services/externalSvc"
 
@@ -23,6 +24,8 @@ func (s *Script) TryScript() error {
 		"script": s.Script,
 		"data":   s.Data,
 	}
+	fmt.Println(req)
+	fmt.Println("^---------- req")
 
 	var resp map[string]interface{}
 	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", actionScriptHost(), "/try", req, &resp); err != nil {
@@ -58,6 +61,22 @@ func (s *Script) RunScriptOnUpdate() error {
 	if resp["status"].(float64) != 200 {
 		return fmt.Errorf("an error occurred")
 	}
+
+	return nil
+}
+
+// ReplaceEnvVars replace env variables values
+func (s *Script) ReplaceEnvVars(envVars map[string]string) error {
+
+	for k, v := range envVars {
+		s.Script = strings.Replace(s.Script, k, v, 1)
+	}
+
+	return nil
+}
+
+// getUserAPIToken get user api token from sql
+func getUserAPIToken() error {
 
 	return nil
 }
