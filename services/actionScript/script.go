@@ -42,7 +42,6 @@ func (s *Script) TryScript() error {
 
 // RunScriptOnUpdate run script on item update
 func (s *Script) RunScriptOnUpdate() error {
-
 	req := map[string]interface{}{
 		"script": s.Script,
 		"data":   s.Data,
@@ -72,7 +71,6 @@ func (s *Script) ReplaceEnvVars(envVars map[string]string) error {
 		s.Script = re.ReplaceAllString(s.Script, v)
 	}
 
-	fmt.Println(s.Script)
 	return nil
 }
 
