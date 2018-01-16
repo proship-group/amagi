@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gin-gonic/gin"
+	utils "github.com/b-eee/amagi"
 
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/contrib/sentry"
-
-	utils "github.com/b-eee/amagi"
+	"github.com/gin-gonic/gin"
 )
 
 type (
