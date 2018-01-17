@@ -4,12 +4,11 @@ import "os"
 
 var (
 	// ServerportENV server port environment name
-	ServerportENV     = "SERVER_PORT_ENV"
-	defaultServerPort = ":9000"
+	ServerportENV = "SERVER_PORT_ENV"
 )
 
-// GetServerPortEnv get server port from env
-func GetServerPortEnv() string {
+// GetServerPortFrmEnv get server port from env if defined or return default from params
+func GetServerPortFrmEnv(defaultServerPort string) string {
 	if portEnv := os.Getenv(ServerportENV); len(portEnv) != 0 {
 		return portEnv
 	}
