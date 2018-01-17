@@ -27,7 +27,7 @@ func Init(host slack.Host) {
 
 // Info print to stdout our message
 func Info(msg string) error {
-	str := fmt.Sprintf("%s %s", timeLoglevel("i"), msg)
+	str := fmt.Sprintf("%s %s", timeLoglevel("i"), FgColorizer(msg, ""))
 	fmt.Println(str)
 
 	return nil
@@ -35,13 +35,13 @@ func Info(msg string) error {
 
 // Warn print to stdout
 func Warn(msg string) {
-	str := fmt.Sprintf("%s %s", timeLoglevel("w"), msg)
+	str := fmt.Sprintf("%s %s", timeLoglevel("w"), FgColorizer(msg, ""))
 	fmt.Println(str)
 }
 
 // Error print to stdout
 func Error(msg string) error {
-	str := fmt.Sprintf("%s %s", timeLoglevel("e"), msg)
+	str := fmt.Sprintf("%s %s", timeLoglevel("e"), FgColorizer(msg, ""))
 	fmt.Println(str)
 
 	sentry.SendToSentry(msg)
@@ -50,7 +50,7 @@ func Error(msg string) error {
 
 // Fatal fatal print to stdout
 func Fatal(msg string) {
-	str := errMsgFmt("f", msg)
+	str := errMsgFmt("f", FgColorizer(msg, ""))
 
 	go slack.Send("", str)
 
@@ -88,12 +88,12 @@ func DumpStack(e interface{}, stack []byte) {
 // UTILS
 // LogLevel construct log level msg
 func logLevel(key string) string {
-	str := fmt.Sprintf("[%s]", logInterface[key])
+	str := fmt.Sprintf("%s", FgColorizer("["+logInterface[key]+"]", key))
 	return str
 }
 
 func timeLoglevel(logLevelStr string) string {
-	str := fmt.Sprintf("[%s] %s", time.Now().Format(time.RFC3339), logLevel(logLevelStr))
+	str := fmt.Sprintf("%s %s", FgColorizer("["+time.Now().Format(time.RFC822Z)+"]", ""), logLevel(logLevelStr))
 	return str
 }
 
