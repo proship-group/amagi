@@ -19,3 +19,10 @@ func TestError(t *testing.T) {
 func TestFatal(t *testing.T) {
 	Fatal("testing fatal..")
 }
+
+func TestAllLogFunc(t *testing.T) {
+	Info("testing info...")
+	Warn("testing warn...")
+	Error("testing error...")
+	Fatal("testing fatal...")
+}

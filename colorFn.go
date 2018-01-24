@@ -18,7 +18,7 @@ func FgColorizer(msg, logLevel string) string {
 	case "f":
 		colorVal = color.FgHiRed
 	default:
-		colorVal = color.FgBlue
+		colorVal = color.FgHiBlack
 	}
 
 	return color.New(colorVal).SprintFunc()(msg)
