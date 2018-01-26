@@ -18,3 +18,12 @@ func GetEnvIntValue(envName string, defaultVal int) int {
 
 	return defaultVal
 }
+
+// GetEnvStringValue get env variable string value with default value
+func GetEnvStringValue(envName string, defaultVal string) string {
+	if value := os.Getenv(envName); len(value) != 0 {
+		return value
+	}
+
+	return defaultVal
+}
