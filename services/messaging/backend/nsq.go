@@ -183,12 +183,12 @@ func NSQPublish(req NSQPubReq) error {
 	e := time.Now()
 
 	producer, _ := createProducer(GetMSGBackendConfig(), NSQGetConfigConn())
+	defer producer.Stop()
 
 	if err := producer.DeferredPublish(req.Topic, time.Duration(1)*time.Millisecond, req.Body); err != nil {
 		utils.Error(fmt.Sprintf("error NSQPublish Publish %v", err))
 		return err
 	}
-	defer producer.Stop()
 
 	utils.Info(fmt.Sprintf("NSQPublish took: %v topic=%v", time.Since(e), req.Topic))
 	return nil

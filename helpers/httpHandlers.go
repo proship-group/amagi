@@ -29,6 +29,12 @@ func GinHTTPOk(c *gin.Context, resp gin.H) error {
 	return nil
 }
 
+// GinHTTPAnonOk gin generic http response writer that accepts interface response
+func GinHTTPAnonOk(c *gin.Context, data interface{}) error {
+	c.JSON(http.StatusOK, data)
+	return nil
+}
+
 // GinJSONResponse gin json response
 func GinJSONResponse(c *gin.Context, resp interface{}) error {
 	c.JSON(http.StatusOK, resp)
