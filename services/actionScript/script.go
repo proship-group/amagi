@@ -3,6 +3,7 @@ package actionScript
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/b-eee/amagi/services/externalSvc"
 
@@ -24,8 +25,9 @@ func (s *Script) TryScript() error {
 		"data":   s.Data,
 	}
 
+	fmt.Println(req["data"])
 	var resp map[string]interface{}
-	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", actionScriptHost(), "/try", req, &resp); err != nil {
+	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", Host(), "/try", req, &resp); err != nil {
 		utils.Error(fmt.Sprintf("error TryScript %v", err))
 
 		return err
@@ -40,14 +42,13 @@ func (s *Script) TryScript() error {
 
 // RunScriptOnUpdate run script on item update
 func (s *Script) RunScriptOnUpdate() error {
-
 	req := map[string]interface{}{
 		"script": s.Script,
 		"data":   s.Data,
 	}
 
 	var resp map[string]interface{}
-	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", actionScriptHost(), "/run", req, &resp); err != nil {
+	if err := externalSvc.GenericHTTPRequesterWResp("POST", "http", Host(), "/run", req, &resp); err != nil {
 		utils.Error(fmt.Sprintf("error TryScript %v", err))
 
 		// skip error handler as actionScriptHost may not exists
@@ -62,11 +63,40 @@ func (s *Script) RunScriptOnUpdate() error {
 	return nil
 }
 
-func actionScriptHost() string {
+// ReplaceEnvVars replace env variables values
+func (s *Script) ReplaceEnvVars(envVars map[string]string) error {
+
+	for k, v := range envVars {
+		re := regexp.MustCompile(k)
+		s.Script = re.ReplaceAllString(s.Script, v)
+	}
+
+	return nil
+}
+
+// getUserAPIToken get user api token from sql
+func getUserAPIToken() error {
+
+	return nil
+}
+
+// Host return action script host address
+func Host() string {
 	host := "localhost:3000"
 	switch os.Getenv("ENV") {
 	case "dev", "stg", "prod":
 		host = "beee-actionscript:3000"
+	}
+
+	return host
+}
+
+// LinkerAPIHost linker api hostname or url
+func LinkerAPIHost() string {
+	host := "localhost:7575"
+	switch os.Getenv("ENV") {
+	case "dev", "stg", "prod":
+		host = "beee-actionscript:7575"
 	}
 
 	return host
