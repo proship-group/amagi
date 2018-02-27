@@ -25,13 +25,13 @@ type (
 	Container struct {
 		Container        interface{}
 		PrefixedPath     []string
-		LoginHandler     func() error
+		LoginHandler     func(gin.H) error
 		MapClaims        func() jwt.MapClaims
 		ExportedHandlers []ExportedHandler
 	}
 )
 
-// ImportAuthAPIs import auth paths login/logout/session handlers
+// ImportAuthAPIs generate and import auth paths login/logout/session handlers to caller
 func (cn *Container) ImportAuthAPIs(route *gin.Engine) []ExportedHandler {
 	cn.ExportedHandlers = []ExportedHandler{}
 	for _, prefixedPath := range cn.PrefixedPath {
@@ -49,12 +49,14 @@ func (cn *Container) Login(c *gin.Context) {
 		return
 	}
 
-	if err := cn.LoginHandler(); err != nil {
+	tokenResp := cn.CreateTokenEndpoint(c)
+	// LoginHandler is a func that user setups
+	if err := cn.LoginHandler(tokenResp); err != nil {
 		helpers.GinHTTPError(c, utils.Error(fmt.Sprintf("error on LoginHandler %v", err)))
 		return
 	}
 
-	cn.CreateTokenEndpoint(c)
+	helpers.GinJSONResponse(c, tokenResp)
 }
 
 // Logout logout api
@@ -63,8 +65,8 @@ func (cn *Container) Logout(c *gin.Context) {}
 // AuthenticateCurrentPath authenticate current API path
 func (cn *Container) AuthenticateCurrentPath(c *gin.Context) {}
 
-// CreateTokenEndpoint create/generate jwt token
-func (cn *Container) CreateTokenEndpoint(c *gin.Context) {
+// CreateTokenEndpoint create/generate and sign the jwt token
+func (cn *Container) CreateTokenEndpoint(c *gin.Context) gin.H {
 	mapClaims := cn.MapClaims()
 
 	mapClaims["exp"] = time.Now().Add(time.Second * time.Duration(sessionExpireOffSet())).Unix()
@@ -72,8 +74,10 @@ func (cn *Container) CreateTokenEndpoint(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte("secret"))
 	if err != nil {
 		helpers.GinHTTPError(c, fmt.Errorf("error on creating token"))
-		return
+		return gin.H{}
 	}
 
-	helpers.GinHTTPAnonOk(c, gin.H{"token": tokenString})
+	// cn.Container.
+	// 	helpers.GinHTTPAnonOk(c, gin.H{"token": tokenString})
+	return gin.H{"token": tokenString}
 }

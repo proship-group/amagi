@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -27,4 +29,9 @@ func sessionExpireOffSet() int64 {
 	}
 
 	return i
+}
+
+// GenerateHashString generate a byte slice from string
+func GenerateHashString(str string) ([]byte, error) {
+	return bcrypt.GenerateFromPassword([]byte(str), 10)
 }
