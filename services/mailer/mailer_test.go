@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	os.Setenv("SENDGRID_API_KEY", "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")
+	os.Setenv("SENDGRID_API_KEY", "")
 }
 
 // TestSendEmail test sending email
