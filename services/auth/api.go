@@ -42,7 +42,6 @@ func (cn *Container) ImportAuthAPIs(route *gin.Engine) []ExportedHandler {
 	return cn.ExportedHandlers
 }
 
-// Login login api
 func (cn *Container) Login(c *gin.Context) {
 	if err := httpd.DecodePostRequest(c.Request.Body, cn.Container); err != nil {
 		helpers.GinHTTPError(c, utils.Error(fmt.Sprintf("error in Decoding Login %v", err)))
