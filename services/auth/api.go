@@ -27,6 +27,7 @@ type (
 		PrefixedPath     []string
 		LoginHandler     func(gin.H) error
 		MapClaims        func() jwt.MapClaims
+		SecretKey        string
 		ExportedHandlers []ExportedHandler
 	}
 )
@@ -42,6 +43,7 @@ func (cn *Container) ImportAuthAPIs(route *gin.Engine) []ExportedHandler {
 	return cn.ExportedHandlers
 }
 
+// Login login interface
 func (cn *Container) Login(c *gin.Context) {
 	if err := httpd.DecodePostRequest(c.Request.Body, cn.Container); err != nil {
 		helpers.GinHTTPError(c, utils.Error(fmt.Sprintf("error in Decoding Login %v", err)))
@@ -70,7 +72,7 @@ func (cn *Container) CreateTokenEndpoint(c *gin.Context) gin.H {
 
 	mapClaims["exp"] = time.Now().Add(time.Second * time.Duration(sessionExpireOffSet())).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
-	tokenString, err := token.SignedString([]byte("secret"))
+	tokenString, err := token.SignedString([]byte(cn.SecretKey))
 	if err != nil {
 		helpers.GinHTTPError(c, fmt.Errorf("error on creating token"))
 		return gin.H{}
