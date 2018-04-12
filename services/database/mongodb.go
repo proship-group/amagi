@@ -199,7 +199,21 @@ func printLiveServers(session *mongodb.Session) {
 // BeginMongo begin mongodb session with time now
 func BeginMongo() (time.Time, *mongodb.Session) {
 	return time.Now(), SessionCopy()
+}
 
+// BeginMongoConn begin mongodb connection with session and collection
+type BeginMongoConn struct {
+	Time time.Time
+	Conn *mongodb.Session
+	Col  *mongodb.Collection
+}
+
+// BeginMongoWCol begin mongodb session with collection initialized
+func BeginMongoWCol() func(string) BeginMongoConn {
+	return func(cname string) BeginMongoConn {
+		conn := SessionCopy()
+		return BeginMongoConn{time.Now(), conn, conn.DB(Db).C(cname)}
+	}
 }
 
 // setDatabaseName set database name

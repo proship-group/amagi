@@ -23,6 +23,17 @@ func GinHTTPError(c *gin.Context, err error) error {
 	return nil
 }
 
+// GinHTTPErrWCode gin http error with code
+func GinHTTPErrWCode(c *gin.Context, code int, err error) error {
+	if flag := os.Getenv(SendHTTPErrorEnv); flag == "false" {
+		c.AbortWithStatusJSON(code, nil)
+		return err
+	}
+
+	c.AbortWithStatusJSON(code, gin.H{"error": err.Error()})
+	return nil
+}
+
 // GinHTTPOk gin generic http response
 func GinHTTPOk(c *gin.Context, resp gin.H) error {
 	c.JSON(http.StatusOK, resp)
