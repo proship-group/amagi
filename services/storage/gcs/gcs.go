@@ -115,8 +115,8 @@ func (svc *Service) NewObject(bucket, objectName string, file io.Reader, content
 	mediaLinkURL, err := url.Parse(mediaLink)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error at parse url %v", err))
-		mediaLink = fmt.Sprintf("/storage/%s", mediaLinkURL.Path)
 	}
+	mediaLink = fmt.Sprintf("/storage/%s", mediaLinkURL.Path)
 	return &storage.ObjectInfo{
 		Name:         res.Name,
 		SelfLink:     res.SelfLink,
