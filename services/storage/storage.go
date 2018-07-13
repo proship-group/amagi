@@ -67,7 +67,7 @@ var (
 	// ErrNotImplemented error for not implemented interface api
 	ErrNotImplemented = fmt.Errorf("The API is not yet implemented")
 	// RandObjNameLength random object name length
-	RandObjNameLength = 256
+	RandObjNameLength = 255
 	// MaxFSFilenameLength max local file system filename length
 	MaxFSFilenameLength = 128
 	tmpPathName         = "hexalink"
