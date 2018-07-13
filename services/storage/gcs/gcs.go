@@ -111,16 +111,16 @@ func (svc *Service) NewObject(bucket, objectName string, file io.Reader, content
 		updated = time.Now()
 	}
 
-	selfLink := res.SelfLink
-	selflinkURL, err := url.Parse(selfLink)
+	mediaLink := res.MediaLink
+	mediaLinkURL, err := url.Parse(mediaLink)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error at parse url %v", err))
-		selfLink = fmt.Sprintf("/storage/%s", selflinkURL.Path)
+		mediaLink = fmt.Sprintf("/storage/%s", mediaLinkURL.Path)
 	}
 	return &storage.ObjectInfo{
 		Name:         res.Name,
-		SelfLink:     selfLink,
-		MediaLink:    res.MediaLink,
+		SelfLink:     res.SelfLink,
+		MediaLink:    mediaLink,
 		ContentType:  res.ContentType,
 		Size:         res.Size,
 		ETag:         res.Etag,
@@ -217,16 +217,16 @@ func (svc *Service) GetObjectInfo(objectName string) (*storage.ObjectInfo, error
 	if err != nil {
 		updated = time.Now()
 	}
-	selfLink := obj.SelfLink
-	selflinkURL, err := url.Parse(selfLink)
+	mediaLink := obj.MediaLink
+	mediaLinkURL, err := url.Parse(mediaLink)
 	if err != nil {
 		utils.Error(fmt.Sprintf("error at parse url %v", err))
-		selfLink = fmt.Sprintf("/storage/%s", selflinkURL.Path)
+		mediaLink = fmt.Sprintf("/storage/%s", mediaLinkURL.Path)
 	}
 	return &storage.ObjectInfo{
 		Name:         obj.Name,
-		SelfLink:     selfLink,
-		MediaLink:    obj.MediaLink,
+		SelfLink:     obj.SelfLink,
+		MediaLink:    mediaLink,
 		ContentType:  obj.ContentType,
 		Size:         obj.Size,
 		ETag:         obj.Etag,
