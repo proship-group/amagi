@@ -22,12 +22,12 @@ import (
 type (
 	// Service gcs service struct
 	Service struct {
-		Endpoint      string
-		Project       string
-		ServieAccount string
-		Region        string
-		BucketName    string
-		PublicPath    string
+		Endpoint       string
+		Project        string
+		ServiceAccount string
+		Region         string
+		BucketName     string
+		PublicPath     string
 
 		// helper variables / cache variables
 		cacheVars struct {
@@ -69,14 +69,14 @@ func (svc *Service) Initialize() error {
 	}
 	// if not yet created...
 	// check if all fields are existing
-	if ok := (svc.ServieAccount != "" &&
+	if ok := (svc.ServiceAccount != "" &&
 		svc.Project != "" &&
 		svc.Region != "" &&
 		svc.BucketName != "" &&
 		svc.PublicPath != ""); !ok {
 		return fmt.Errorf("Invalid service struct: %v", svc)
 	}
-	client, err := gcs.New(ServiceAccountClient(svc.ServieAccount))
+	client, err := gcs.New(ServiceAccountClient(svc.ServiceAccount))
 	if err != nil {
 		utils.Error(fmt.Sprintf("Unable to create storage service: %v", err))
 		return err

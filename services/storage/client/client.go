@@ -45,12 +45,12 @@ func InitStorageClient() {
 	switch cfg["storageService"] {
 	case "gcs":
 		Client = &gcs.Service{
-			Endpoint:      cfg["endpoint"],
-			Project:       os.Getenv(ProjectIDEnv),
-			ServieAccount: os.Getenv(ServiceAccountEnv),
-			Region:        cfg["region"],
-			BucketName:    os.Getenv(BucketNameEnv),
-			PublicPath:    os.Getenv(PublicNameEnv),
+			Endpoint:       cfg["endpoint"],
+			Project:        os.Getenv(ProjectIDEnv),
+			ServiceAccount: os.Getenv(ServiceAccountEnv),
+			Region:         cfg["region"],
+			BucketName:     os.Getenv(BucketNameEnv),
+			PublicPath:     os.Getenv(PublicNameEnv),
 		}
 	case "s3", "minio":
 		Client = &minio.Service{
