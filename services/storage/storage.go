@@ -68,7 +68,9 @@ var (
 	ErrNotImplemented = fmt.Errorf("The API is not yet implemented")
 	// RandObjNameLength random object name length
 	RandObjNameLength = 256
-	tmpPathName       = "hexalink"
+	// MaxFSFilenameLength max local file system filename length
+	MaxFSFilenameLength = 128
+	tmpPathName         = "hexalink"
 )
 
 // NewTempFile prepares a string for temp file
@@ -81,5 +83,5 @@ func NewTempFile(name string, prefixDir ...string) string {
 		utils.Error(fmt.Sprintf("cant mkdir to %v", err))
 		return ""
 	}
-	return filepath.FromSlash(fmt.Sprintf("%s/%s", folder, name))
+	return filepath.FromSlash(fmt.Sprintf("%s/%s", folder, name[:MaxFSFilenameLength]))
 }
