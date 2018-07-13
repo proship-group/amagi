@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	utils "amagi"
-	"amagi/services/configctl"
-	"amagi/services/storage"
-	"amagi/services/storage/gcs"
-	"amagi/services/storage/minio"
+	utils "github.com/b-eee/amagi"
+	"github.com/b-eee/amagi/services/configctl"
+	"github.com/b-eee/amagi/services/storage"
+	"github.com/b-eee/amagi/services/storage/gcs"
+	"github.com/b-eee/amagi/services/storage/minio"
 )
 
 const (

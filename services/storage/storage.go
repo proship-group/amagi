@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	utils "amagi"
+	utils "github.com/b-eee/amagi"
 )
 
 type (

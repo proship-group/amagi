@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	utils "amagi"
-	"amagi/helpers"
-	"amagi/services/storage"
+	utils "github.com/b-eee/amagi"
+	"github.com/b-eee/amagi/helpers"
+	"github.com/b-eee/amagi/services/storage"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"

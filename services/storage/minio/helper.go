@@ -3,7 +3,7 @@ package minio
 import (
 	"fmt"
 
-	utils "amagi"
+	utils "github.com/b-eee/amagi"
 
 	"github.com/minio/minio-go"
 )
