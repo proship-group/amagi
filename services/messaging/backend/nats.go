@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats"
+	"github.com/nats-io/go-nats"
 
 	utils "github.com/b-eee/amagi"
 )
