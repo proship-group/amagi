@@ -2,7 +2,6 @@ package actionScript
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/b-eee/amagi/services/externalSvc"
