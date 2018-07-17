@@ -82,22 +82,10 @@ func getUserAPIToken() error {
 
 // Host return action script host address
 func Host() string {
-	host := "localhost:3000"
-	switch os.Getenv("ENV") {
-	case "dev", "stg", "prod":
-		host = "beee-actionscript:3000"
-	}
-
-	return host
+	return fmt.Sprintf("%s:%s", externalSvc.EnvActionscriptHost, externalSvc.EnvActionscriptPort)
 }
 
 // LinkerAPIHost linker api hostname or url
 func LinkerAPIHost() string {
-	host := "localhost:7575"
-	switch os.Getenv("ENV") {
-	case "dev", "stg", "prod":
-		host = "beee-actionscript:7575"
-	}
-
-	return host
+	return fmt.Sprintf("%s:%s", externalSvc.EnvLinkerAPIHost, externalSvc.EnvLinkerAPIPort)
 }
