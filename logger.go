@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/b-eee/amagi/api/slack"
+	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/sentry"
-
 	"github.com/k0kubun/pp"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -64,6 +65,11 @@ func Pretty(obj interface{}, msg string) {
 
 	fmt.Println(str)
 	pp.Println(obj)
+}
+
+// PrettyBson Pretty Printer for []bson
+func PrettyBson(slice []bson.M, msg string) {
+	helpers.PrintBsonSlice(slice, msg)
 }
 
 // ExceptionDump start watching stack trace
