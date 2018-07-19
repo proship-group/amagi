@@ -2,12 +2,14 @@ package configctl
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/b-eee/amagi/services/externalSvc"
 )
 
 // ConfCtLHost config controller host name
 func ConfCtLHost() string {
+	env := os.Getenv("ENV")
 	return fmt.Sprintf("%v://%v:%v", ConfCtLProtocol(env), externalSvc.EnvConfigctlHost, externalSvc.EnvConfigctlPort)
 }
 
