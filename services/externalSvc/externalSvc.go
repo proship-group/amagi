@@ -44,6 +44,16 @@ var (
 	EnvLinkerAPIHost = EnvVar{"LINKER_API_SERVICE_HOST", "localhost"}
 	// EnvLinkerAPIPort env name for linker-api port
 	EnvLinkerAPIPort = EnvVar{"LINKER_API_SERVICE_PORT", "7575"}
+
+	// EnvJoblinkerHost env name for joblinker host
+	EnvJoblinkerHost = EnvVar{"BEEE_JOBLINKER_SERVICE_HOST", "localhost"}
+	// EnvJoblinkerPort env name for joblinker port
+	EnvJoblinkerPort = EnvVar{"BEEE_JOBLINKER_SERVICE_PORT", "9010"}
+
+	// EnvNotificatorHost env name for configctl host
+	EnvNotificatorHost = EnvVar{"BEEE_NOTIFICATOR_SERVICE_HOST", "localhost"}
+	// EnvNotificatorPort env name for configctl port
+	EnvNotificatorPort = EnvVar{"BEEE_NOTIFICATOR_SERVICE_PORT", "8081"}
 )
 
 func (v EnvVar) String() string {
