@@ -3,26 +3,14 @@ package configctl
 import (
 	"fmt"
 	"os"
-)
 
-var (
-	// ConfigCtlPort config controller port
-	ConfigCtlPort = 8083
+	"github.com/b-eee/amagi/services/externalSvc"
 )
 
 // ConfCtLHost config controller host name
 func ConfCtLHost() string {
-	var host string
-
 	env := os.Getenv("ENV")
-	switch env {
-	case "local":
-		host = "localhost"
-	default:
-		host = "beee-configctl"
-	}
-
-	return fmt.Sprintf("%v://%v:%v", ConfCtLProtocol(env), host, ConfigCtlPort)
+	return fmt.Sprintf("%v://%v:%v", ConfCtLProtocol(env), externalSvc.EnvConfigctlHost, externalSvc.EnvConfigctlPort)
 }
 
 // ConfCtLProtocol config controller protocol
@@ -40,29 +28,11 @@ func ConfCtLProtocol(env string) string {
 }
 
 // ImporterURL importer URL
-func ImporterURL(port int) string {
-	var importerURL string
-	switch os.Getenv("ENV") {
-	case "local":
-		importerURL = fmt.Sprintf("localhost:%v", port)
-	case "docker":
-		importerURL = fmt.Sprintf("importer:%v", port)
-	default:
-		importerURL = fmt.Sprintf("beee-importer:%v", port)
-	}
-	return importerURL
+func ImporterURL() string {
+	return fmt.Sprintf("%s:%s", externalSvc.EnvImporterHost, externalSvc.EnvImporterPort)
 }
 
 // ApicoreURL apicore cluster/dev URL
-func ApicoreURL(port int) string {
-	var importerURL string
-	switch os.Getenv("ENV") {
-	case "local":
-		importerURL = fmt.Sprintf("localhost:%v", port)
-	case "docker":
-		importerURL = fmt.Sprintf("apicore:%v", port)
-	default:
-		importerURL = fmt.Sprintf("beee-apicore:%v", port)
-	}
-	return importerURL
+func ApicoreURL() string {
+	return fmt.Sprintf("%s:%s", externalSvc.EnvApicoreHost, externalSvc.EnvApicorePort)
 }
