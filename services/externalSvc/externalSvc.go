@@ -56,6 +56,7 @@ var (
 	EnvNotificatorPort = EnvVar{"BEEE_NOTIFICATOR_SERVICE_PORT", "8081"}
 )
 
+// String return env value or default
 func (v EnvVar) String() string {
 	if e := os.Getenv(v.Name); e != "" {
 		return e
