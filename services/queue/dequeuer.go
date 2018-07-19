@@ -23,7 +23,7 @@ func Dequeue(itemPtr Executor) {
 	queueItem := Queue{}
 	queueItem.ItemData = itemPtr
 
-	utils.Info(fmt.Sprintf("Dequeuer started with %v sleeping time...", sleepDuration))
+	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started with %v sleeping time...", sleepDuration))
 
 	for {
 		// TODO: add concurrency settings? like how many max concurrent execution at the same time
