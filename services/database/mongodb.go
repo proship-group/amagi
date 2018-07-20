@@ -106,7 +106,7 @@ func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 			return tls.Dial("tcp", addr.String(), &tls.Config{})
 		}
 
-		conn.Addrs = []string{cfe.Host}
+		// conn.Addrs = []string{cfe.Host}
 		conn.Direct = false
 	} else {
 		return conn
