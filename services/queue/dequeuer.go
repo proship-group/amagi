@@ -1,12 +1,14 @@
 package queue
 
 import (
+	"encoding/gob"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	utils "github.com/b-eee/amagi"
+	"gopkg.in/mgo.v2"
 )
 
 const (
@@ -18,17 +20,32 @@ const (
 )
 
 // Dequeue loop process for dequeuing the queue
-func Dequeue(itemPtr Executor) {
-	sleepDuration := getSleepDuration()
-	queueItem := Queue{}
-	queueItem.ItemData = itemPtr
+//
+// For example:
+//
+//     go Dequeue(A{}, B{}, C{})
+//
+func Dequeue(types ...interface{}) {
+	for _, qtype := range types {
+		go startDequeuefunc(qtype)
+	}
+}
 
-	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started with %v sleeping time...", sleepDuration))
+func startDequeuefunc(qtype interface{}) {
+	sleepDuration := getSleepDuration()
+	typeName := GetTypeName(qtype)
+	gob.RegisterName(typeName, qtype)
+	queueItem := Queue{}
+
+	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started for `%v` with %v sleeping time...", typeName, sleepDuration))
 
 	for {
 		// TODO: add concurrency settings? like how many max concurrent execution at the same time
 		func() {
-			if err := queueItem.Dequeue(); err != nil {
+			if err := queueItem.Dequeue(typeName); err != nil {
+				if err != mgo.ErrNotFound {
+					utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
+				}
 				time.Sleep(sleepDuration)
 				return
 			}
@@ -36,11 +53,11 @@ func Dequeue(itemPtr Executor) {
 
 			itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
 				queueItem.ID.Hex(),
-				queueItem.ItemData.Identity(),
+				queueItem.ItemExec.Identity(),
 			)
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
 			procStart := time.Now()
-			if err := queueItem.ItemData.Execute(); err != nil {
+			if err := queueItem.ItemExec.Execute(); err != nil {
 				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 				defer queueItem.Fail()
 				return

@@ -1,6 +1,8 @@
 package queue
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,9 +33,10 @@ type (
 		CreatedAt  time.Time     `bson:"created_at"`
 		StartedAt  time.Time     `bson:"started_at"`
 		FinishedAt time.Time     `bson:"finished_at"`
-		ItemData   Executor      `bson:"item_data"`
+		ItemData   []byte        `bson:"item_data"`
 		ItemType   string        `bson:"item_type"`
 
+		ItemExec                  Executor `bson:"-" json:"-"`
 		notFilterQueueNameDequeue bool
 	}
 )
@@ -54,40 +57,6 @@ var (
 	QueueCollection = "queue_import"
 )
 
-// SetBSON implements bson.Setter. This is needed because mgo does cannot map bson values to interfaces with methods
-func (item *Queue) SetBSON(raw bson.Raw) error {
-
-	decoded := new(struct {
-		ID         bson.ObjectId `bson:"_id"`
-		Status     Statuses      `bson:"status"`
-		CreatedAt  time.Time     `bson:"created_at"`
-		StartedAt  time.Time     `bson:"started_at"`
-		FinishedAt time.Time     `bson:"finished_at"`
-		ItemData   interface{}   `bson:"item_data"`
-		ItemType   string        `bson:"item_type"`
-	})
-
-	bsonErr := raw.Unmarshal(decoded)
-	if bsonErr == nil {
-		// need to manually assign values here...
-		item.ID = decoded.ID
-		item.Status = decoded.Status
-		item.CreatedAt = decoded.CreatedAt
-		item.StartedAt = decoded.StartedAt
-		item.FinishedAt = decoded.FinishedAt
-		item.ItemType = decoded.ItemType
-	} else {
-		return bsonErr
-	}
-	// after setting everything else, get the interface data and assign it to the initialized one in `item`
-	// marshal the bson data, then unmarshal it again into the `item.ItemData`
-	bsonBytes, _ := bson.Marshal(decoded.ItemData)
-	if bsonErr = bson.Unmarshal(bsonBytes, item.ItemData); bsonErr != nil {
-		return bsonErr
-	}
-	return nil
-}
-
 // Enqueue adds the item to queue db
 //
 // For example:
@@ -95,13 +64,20 @@ func (item *Queue) SetBSON(raw bson.Raw) error {
 //     go models.Queue{ItemData: d}.Enqueue()
 //
 func (item Queue) Enqueue() error {
-	if item.ItemData == nil {
-		return fmt.Errorf("Queue item must have ItemData: %v", item)
+	if item.ItemExec == nil {
+		return fmt.Errorf("Queue item must have ItemExec: %v", item)
+	}
+	var data bytes.Buffer
+	en := gob.NewEncoder(&data)
+	if err := en.Encode(&item.ItemExec); err != nil {
+		utils.Error(fmt.Sprintf("[Amagi-Queue] error Encoding to GOB: %v", err))
+		return err
 	}
 	sc := database.SessionCopy()
 	defer sc.Close()
 	coll := sc.DB(database.Db).C(QueueCollection)
 
+	item.ItemData = data.Bytes()
 	item.ID = bson.NewObjectId()
 	item.Status = StatusQueued
 	item.CreatedAt = time.Now()
@@ -122,10 +98,7 @@ func (item Queue) Enqueue() error {
 //     if err := queueItem.Dequeue(); err != nil {}
 //     fmt.Print(queueItem.Status)
 //
-func (item *Queue) Dequeue() error {
-	if item.ItemData == nil {
-		return fmt.Errorf("Queue item must have ItemData not set to nil")
-	}
+func (item *Queue) Dequeue(typeName string) error {
 	sc := database.SessionCopy()
 	defer sc.Close()
 	coll := sc.DB(database.Db).C(QueueCollection)
@@ -140,7 +113,7 @@ func (item *Queue) Dequeue() error {
 	// var dequeued *deququed
 	selector := bson.M{"status": StatusQueued}
 	if !item.notFilterQueueNameDequeue {
-		selector["item_type"] = item.ExecName()
+		selector["item_type"] = typeName
 	}
 
 	if _, err := coll.Find(selector).Sort("created_at").Apply(change, item); err != nil {
@@ -150,7 +123,11 @@ func (item *Queue) Dequeue() error {
 		}
 		return err
 	}
-
+	de := gob.NewDecoder(bytes.NewReader(item.ItemData))
+	if err := de.Decode(&item.ItemExec); err != nil {
+		utils.Error(fmt.Sprintf("[Amagi-Queue] error Decoding GOB: %v", err))
+		return err
+	}
 	return nil
 }
 
@@ -180,10 +157,15 @@ func (item *Queue) Fail() error {
 
 // ExecName get the calculated name of the Executor dataItem
 func (item *Queue) ExecName() string {
-	if item.ItemData == nil {
+	return GetTypeName(item.ItemExec)
+}
+
+// GetTypeName returns the last index after split by '.'
+func GetTypeName(t interface{}) string {
+	if t == nil {
 		return ""
 	}
-	l := strings.Split(reflect.TypeOf(item.ItemData).String(), ".")
+	l := strings.Split(reflect.TypeOf(t).String(), ".")
 	if len(l) <= 0 {
 		return ""
 	}
@@ -193,14 +175,7 @@ func (item *Queue) ExecName() string {
 
 // CleanUp sets the item to nil
 func (item *Queue) CleanUp() {
-	item.ID = ""
-	item.Status = 0
-	item.CreatedAt = time.Time{}
-	item.StartedAt = time.Time{}
-	item.FinishedAt = time.Time{}
-	item.ItemType = ""
-	p := reflect.ValueOf(item.ItemData).Elem()
-	p.Set(reflect.Zero(p.Type()))
+	item = &Queue{}
 	utils.Info(fmt.Sprintf("[Amagi-Queue] Item cleaned-up: %v", item))
 }
 
