@@ -19,7 +19,7 @@ func TryActionScript(c *gin.Context) {
 
 	s.ReplaceEnvVars(map[string]string{})
 
-	if err := s.TryScript(); err != nil {
+	if err := s.ExecuteScript(); err != nil {
 		httpd.HTTPError(c.Writer, err)
 		return
 	}
