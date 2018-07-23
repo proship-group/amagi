@@ -175,7 +175,9 @@ func GetTypeName(t interface{}) string {
 
 // CleanUp sets the item to nil
 func (item *Queue) CleanUp() {
+	notFilterQueueNameDequeue := item.notFilterQueueNameDequeue
 	item = &Queue{}
+	item.notFilterQueueNameDequeue = notFilterQueueNameDequeue
 	utils.Info(fmt.Sprintf("[Amagi-Queue] Item cleaned-up: %v", item))
 }
 
