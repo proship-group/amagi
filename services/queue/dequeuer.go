@@ -19,20 +19,23 @@ const (
 	defaultMaxConcurrentExec = 1
 )
 
+// ExecCallback callback after queueItem.Execute(), original data is passed as arg
+type ExecCallback func(Executor) error
+
 // Dequeue loop process for dequeuing the queue
 //
 // For example:
 //
 //     go Dequeue(A{}, B{}, C{})
 //
-func Dequeue(queueCollectionName string, types ...interface{}) {
+func Dequeue(queueCollectionName string, callback ExecCallback, types ...interface{}) {
 	QueueCollection = queueCollectionName
 	for _, qtype := range types {
-		go startDequeuefunc(qtype)
+		go startDequeuefunc(qtype, callback)
 	}
 }
 
-func startDequeuefunc(qtype interface{}) {
+func startDequeuefunc(qtype interface{}, callback ExecCallback) {
 	sleepDuration := getSleepDuration()
 	typeName := GetTypeName(qtype)
 	gob.RegisterName(typeName, qtype)
@@ -62,6 +65,13 @@ func startDequeuefunc(qtype interface{}) {
 				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 				defer queueItem.Fail()
 				return
+			}
+			if callback != nil {
+				if err := callback(queueItem.ItemExec); err != nil {
+					utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute(callback) for %s: %v", itemString, err))
+					defer queueItem.Fail()
+					return
+				}
 			}
 			queueItem.Success()
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Queued %s is done, took: %v",
