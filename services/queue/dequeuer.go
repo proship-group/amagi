@@ -25,7 +25,8 @@ const (
 //
 //     go Dequeue(A{}, B{}, C{})
 //
-func Dequeue(types ...interface{}) {
+func Dequeue(queueCollectionName string, types ...interface{}) {
+	QueueCollection = queueCollectionName
 	for _, qtype := range types {
 		go startDequeuefunc(qtype)
 	}
