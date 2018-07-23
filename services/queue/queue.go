@@ -54,7 +54,7 @@ const (
 
 var (
 	// QueueCollection collection name
-	QueueCollection = "queue_import"
+	QueueCollection = "queue_items"
 )
 
 // Enqueue adds the item to queue db
