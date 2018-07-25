@@ -29,6 +29,8 @@ type (
 	// Queue object of a queue item
 	Queue struct {
 		ID         bson.ObjectId `bson:"_id"`
+		Name       string        `bson:"name"`
+		Category   string        `bson:"category"`
 		Status     Statuses      `bson:"status"`
 		CreatedAt  time.Time     `bson:"created_at"`
 		StartedAt  time.Time     `bson:"started_at"`
