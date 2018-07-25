@@ -9,15 +9,7 @@ import (
 )
 
 func configCtlURL() string {
-	var configURL string
-	switch os.Getenv("ENV") {
-	case "local":
-		configURL = "localhost:8083"
-	default:
-		configURL = "beee-configctl:8083"
-	}
-
-	return configURL
+	return fmt.Sprintf("%s:%s", externalSvc.EnvConfigctlHost, externalSvc.EnvConfigctlPort)
 }
 
 // APIrequestGetter api configctl credentials getter

@@ -12,6 +12,58 @@ import (
 	utils "github.com/b-eee/amagi"
 )
 
+type (
+	// EnvVar env var shortcut
+	EnvVar struct {
+		Name, Default string
+	}
+)
+
+var (
+	// EnvConfigctlHost env name for configctl host
+	EnvConfigctlHost = EnvVar{"BEEE_CONFIGCTL_SERVICE_HOST", "localhost"}
+	// EnvConfigctlPort env name for configctl port
+	EnvConfigctlPort = EnvVar{"BEEE_CONFIGCTL_SERVICE_PORT", "8083"}
+
+	// EnvApicoreHost env name for apicore host
+	EnvApicoreHost = EnvVar{"BEEE_APICORE_SERVICE_HOST", "localhost"}
+	// EnvApicorePort env name for apicore port
+	EnvApicorePort = EnvVar{"BEEE_APICORE_SERVICE_PORT", "9000"}
+
+	// EnvActionscriptHost env name for actionscript host
+	EnvActionscriptHost = EnvVar{"BEEE_ACTIONSCRIPT_SERVICE_HOST", "localhost"}
+	// EnvActionscriptPort env name for actionscript port
+	EnvActionscriptPort = EnvVar{"BEEE_ACTIONSCRIPT_SERVICE_PORT", "3000"}
+
+	// EnvImporterHost env name for importer host
+	EnvImporterHost = EnvVar{"BEEE_IMPORTER_SERVICE_HOST", "localhost"}
+	// EnvImporterPort env name for importer port
+	EnvImporterPort = EnvVar{"BEEE_IMPORTER_SERVICE_PORT", "8080"}
+
+	// EnvLinkerAPIHost env name for linker-api host
+	EnvLinkerAPIHost = EnvVar{"LINKER_API_SERVICE_HOST", "localhost"}
+	// EnvLinkerAPIPort env name for linker-api port
+	EnvLinkerAPIPort = EnvVar{"LINKER_API_SERVICE_PORT", "7575"}
+
+	// EnvJoblinkerHost env name for joblinker host
+	EnvJoblinkerHost = EnvVar{"BEEE_JOBLINKER_SERVICE_HOST", "localhost"}
+	// EnvJoblinkerPort env name for joblinker port
+	EnvJoblinkerPort = EnvVar{"BEEE_JOBLINKER_SERVICE_PORT", "9010"}
+
+	// EnvNotificatorHost env name for configctl host
+	EnvNotificatorHost = EnvVar{"BEEE_NOTIFICATOR_SERVICE_HOST", "localhost"}
+	// EnvNotificatorPort env name for configctl port
+	EnvNotificatorPort = EnvVar{"BEEE_NOTIFICATOR_SERVICE_PORT", "8081"}
+)
+
+// String return env value or default
+func (v EnvVar) String() string {
+	if e := os.Getenv(v.Name); e != "" {
+		return e
+	}
+	return v.Default
+}
+
 // GenericHTTPRequester common HTTP requester utils
 // TODO DEPRECATE THIS, USE BELOW INSTEAD JP
 func GenericHTTPRequester(method, scheme, host, url string, data interface{}) (string, error) {
@@ -114,13 +166,5 @@ func APIrequestGetter(credKey, field string, response interface{}) error {
 }
 
 func configCtlURL() string {
-	var configURL string
-	switch os.Getenv("ENV") {
-	case "local":
-		configURL = "localhost:8083"
-	default:
-		configURL = "beee-configctl:8083"
-	}
-
-	return configURL
+	return fmt.Sprintf("%s:%s", EnvConfigctlHost, EnvConfigctlPort)
 }
