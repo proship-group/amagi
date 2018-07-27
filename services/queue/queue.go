@@ -25,6 +25,8 @@ type (
 
 	// Logificator logging interface for queue Execute
 	Logificator interface {
+		// SetIdentity set Identity
+		SetIdentity(string)
 		// Info send [INFO] message to log
 		Info(string)
 		// Warn send [WARN] message to log
