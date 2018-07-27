@@ -18,9 +18,27 @@ type (
 	// Executor queue execute command
 	Executor interface {
 		// Execute the method to call during dequeueing
-		Execute() error
+		Execute(Logificator) error
 		// Identity must be an identifying string for the item
 		Identity() string
+	}
+
+	// Logificator logging interface for queue Execute
+	Logificator interface {
+		// Info send [INFO] message to log
+		Info(string)
+		// Warn send [WARN] message to log
+		Warn(string)
+		// Error send [ERROR] message to log
+		Error(string)
+		// Fatal send [FATAL] message to log
+		Fatal(string)
+		// SetProgressMax sets the maximum Progress in int
+		SetProgressMax(int)
+		// ProgressInc incease current progress with int as param
+		ProgressInc(int)
+		// Finalize finalize the execution and max out progress
+		Finalize()
 	}
 
 	// Statuses import queue statuses

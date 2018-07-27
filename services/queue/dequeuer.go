@@ -26,16 +26,16 @@ type ExecCallback func(Executor) error
 //
 // For example:
 //
-//     go Dequeue(A{}, B{}, C{})
+//     go Dequeue("queue_items", callBack, logger, A{}, B{}, C{})
 //
-func Dequeue(queueCollectionName string, callback ExecCallback, types ...interface{}) {
+func Dequeue(queueCollectionName string, callback ExecCallback, logger Logificator, types ...interface{}) {
 	QueueCollection = queueCollectionName
 	for _, qtype := range types {
-		go startDequeuefunc(qtype, callback)
+		go startDequeuefunc(qtype, callback, logger)
 	}
 }
 
-func startDequeuefunc(qtype interface{}, callback ExecCallback) {
+func startDequeuefunc(qtype interface{}, callback ExecCallback, logger Logificator) {
 	sleepDuration := getSleepDuration()
 	typeName := GetTypeName(qtype)
 	gob.RegisterName(typeName, qtype)
@@ -61,7 +61,7 @@ func startDequeuefunc(qtype interface{}, callback ExecCallback) {
 			)
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
 			procStart := time.Now()
-			if err := queueItem.ItemExec.Execute(); err != nil {
+			if err := queueItem.ItemExec.Execute(logger); err != nil {
 				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 				defer queueItem.Fail()
 				return
