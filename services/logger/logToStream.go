@@ -19,6 +19,9 @@ type (
 	}
 )
 
+// Initialize initialize the logger with the ID
+func (log *LogToStream) Initialize(id string) {}
+
 // Info send [INFO] message to log
 func (log *LogToStream) Info(message string) {
 	logMessageToStream(log.LogStream, "Info", message)
@@ -57,7 +60,6 @@ func (log *LogToStream) ProgressInc(progress int) {
 
 // Finalize finalize the execution and max out progress
 func (log *LogToStream) Finalize() {
-	logMessageToStream(log.LogStream, "Finalize", "Process has finished")
 	log.ProgressStream.Write(nil)
 }
 

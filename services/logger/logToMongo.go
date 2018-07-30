@@ -16,6 +16,7 @@ type (
 		ID              bson.ObjectId `bson:"_id"`
 		MaxProgress     int           `bson:"max_progress"`
 		CurrentProgress int           `bson:"progress" json:"progress"`
+		ParentID        string        `bson:"parent_id" json:"parent_id"`
 
 		Database       string `bson:"-" json:"-"`
 		CollectionName string `bson:"-" json:"-"`
@@ -43,13 +44,14 @@ var (
 	PersistProgressIntervalMSDefault = 2000
 )
 
-// InitializeCollection initialize collection
-func (log *LogToMongo) InitializeCollection() {
+// Initialize initialize collection
+func (log *LogToMongo) Initialize(id string) {
 	if log.Collection != nil {
 		return
 	}
 
 	log.ID = bson.NewObjectId()
+	log.ParentID = id
 	log.Collection = log.Session.DB(log.Database).C(log.CollectionName)
 	if log.PersistProgressIntervalMS <= 0 {
 		log.PersistProgressIntervalMS = PersistProgressIntervalMSDefault
@@ -66,31 +68,26 @@ func (log *LogToMongo) InitializeCollection() {
 
 // Info send [INFO] message to log
 func (log *LogToMongo) Info(message string) {
-	log.InitializeCollection()
 	createLogMessage(log.Collection, log.ID.Hex(), "Info", message)
 }
 
 // Warn send [WARN] message to log
 func (log *LogToMongo) Warn(message string) {
-	log.InitializeCollection()
 	createLogMessage(log.Collection, log.ID.Hex(), "Warn", message)
 }
 
 // Error send [ERROR] message to log
 func (log *LogToMongo) Error(message string) {
-	log.InitializeCollection()
 	createLogMessage(log.Collection, log.ID.Hex(), "Error", message)
 }
 
 // Fatal send [FATAL] message to log
 func (log *LogToMongo) Fatal(message string) {
-	log.InitializeCollection()
 	createLogMessage(log.Collection, log.ID.Hex(), "Fatal", message)
 }
 
 // SetProgressMax sets the maximum Progress in int
 func (log *LogToMongo) SetProgressMax(max int) {
-	log.InitializeCollection()
 	log.MaxProgress = max
 
 	err := log.Collection.Update(
@@ -104,7 +101,6 @@ func (log *LogToMongo) SetProgressMax(max int) {
 
 // ProgressInc incease current progress with int as param
 func (log *LogToMongo) ProgressInc(progress int) {
-	log.InitializeCollection()
 	log.CurrentProgress = log.CurrentProgress + progress
 }
 
@@ -116,7 +112,6 @@ func (log *LogToMongo) Finalize() {
 	if log.persistentCloser != nil {
 		log.persistentCloser()
 	}
-	createLogMessage(log.Collection, log.ID.Hex(), "Finalize", "Process has finished")
 }
 
 func createLogMessage(collection *mongodb.Collection, logID, logType, message string) {

@@ -7,6 +7,7 @@ import (
 type (
 	// Logger copied from queue to eliminate circular import
 	Logger interface {
+		Initialize(string)
 		Info(string)
 		Warn(string)
 		Error(string)
@@ -21,6 +22,19 @@ type (
 		Loggers []Logger
 	}
 )
+
+// Initialize initialize the logger with the ID
+func (log *LogToLoggers) Initialize(id string) {
+	var wg *sync.WaitGroup
+	wg.Add(len(log.Loggers))
+	for _, logger := range log.Loggers {
+		go func(logger Logger) {
+			defer wg.Done()
+			logger.Initialize(id)
+		}(logger)
+	}
+	wg.Wait()
+}
 
 // Info send [INFO] message to log
 func (log *LogToLoggers) Info(message string) {

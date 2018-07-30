@@ -25,6 +25,8 @@ type (
 
 	// Logificator logging interface for queue Execute
 	Logificator interface {
+		// Initialize initialize the logger with the ID
+		Initialize(string)
 		// Info send [INFO] message to log
 		Info(string)
 		// Warn send [WARN] message to log
