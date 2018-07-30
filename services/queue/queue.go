@@ -25,8 +25,6 @@ type (
 
 	// Logificator logging interface for queue Execute
 	Logificator interface {
-		// SetIdentity set Identity
-		SetIdentity(string)
 		// Info send [INFO] message to log
 		Info(string)
 		// Warn send [WARN] message to log
@@ -57,6 +55,8 @@ type (
 		FinishedAt time.Time     `bson:"finished_at"`
 		ItemData   []byte        `bson:"item_data"`
 		ItemType   string        `bson:"item_type"`
+		LogsID     string        `bson:"logs_id"`
+		StreamID   string        `bson:"stream_id"`
 
 		ItemExec                  Executor `bson:"-" json:"-"`
 		notFilterQueueNameDequeue bool
