@@ -110,8 +110,12 @@ func (log *LogToMongo) ProgressInc(progress int) {
 
 // Finalize finalize the execution and max out progress
 func (log *LogToMongo) Finalize() {
-	defer log.Session.Close()
-	log.persistentCloser()
+	if log.Session != nil {
+		defer log.Session.Close()
+	}
+	if log.persistentCloser != nil {
+		log.persistentCloser()
+	}
 	createLogMessage(log.Collection, log.ID.Hex(), "Finalize", "Process has finished")
 }
 
