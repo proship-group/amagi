@@ -43,7 +43,9 @@ func StartDequeue(qtype interface{}, callback ExecCallback, logger Logificator) 
 	queueItem := Queue{}
 
 	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started for `%v` with %v sleeping time...", typeName, sleepDuration))
-	defer logger.Finalize()
+	if logger != nil {
+		defer logger.Finalize()
+	}
 
 	for {
 		// TODO: add concurrency settings? like how many max concurrent execution at the same time
@@ -52,9 +54,11 @@ func StartDequeue(qtype interface{}, callback ExecCallback, logger Logificator) 
 				utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
 			}
 			time.Sleep(sleepDuration)
-			return
+			continue
 		}
-		logger.Initialize(queueItem.ID.Hex())
+		if logger != nil {
+			logger.Initialize(queueItem.ID.Hex())
+		}
 		defer queueItem.CleanUp()
 
 		itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
@@ -66,13 +70,13 @@ func StartDequeue(qtype interface{}, callback ExecCallback, logger Logificator) 
 		if err := queueItem.ItemExec.Execute(logger); err != nil {
 			utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 			defer queueItem.Fail()
-			return
+			continue
 		}
 		if callback != nil {
 			if err := callback(queueItem.ItemExec); err != nil {
 				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute(callback) for %s: %v", itemString, err))
 				defer queueItem.Fail()
-				return
+				continue
 			}
 		}
 		queueItem.Success()

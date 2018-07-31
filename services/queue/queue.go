@@ -9,6 +9,7 @@ import (
 	"time"
 
 	utils "github.com/b-eee/amagi"
+	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/database"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -57,7 +58,6 @@ type (
 		FinishedAt time.Time     `bson:"finished_at"`
 		ItemData   []byte        `bson:"item_data"`
 		ItemType   string        `bson:"item_type"`
-		LogsID     string        `bson:"logs_id"`
 		StreamID   string        `bson:"stream_id"`
 
 		ItemExec                  Executor `bson:"-" json:"-"`
@@ -106,6 +106,11 @@ func (item Queue) Enqueue() error {
 	item.Status = StatusQueued
 	item.CreatedAt = time.Now()
 	item.ItemType = item.ExecName()
+	item.StreamID = helpers.RandString6(128)
+	item.Name = item.ItemExec.Identity()
+	if item.Category == "" {
+		item.Category = item.ExecName()
+	}
 
 	if err := coll.Insert(item); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Enqueue: %v", err))
@@ -227,5 +232,6 @@ func (status Statuses) String() string {
 		"StatusQueued",
 		"StatusProgress",
 		"StatusDone",
-	}[status]
+		"StatusError",
+	}[int(status)]
 }
