@@ -1,9 +1,9 @@
 package logger
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -44,17 +44,13 @@ func (log *LogToStream) Fatal(message string) {
 
 // SetProgressMax sets the maximum Progress in int
 func (log *LogToStream) SetProgressMax(max int) {
-	var b []byte
-	binary.LittleEndian.PutUint64(b, uint64(max))
-	log.MaxProgressStream.Write(b)
+	log.MaxProgressStream.Write([]byte(strconv.Itoa(max)))
 	log.MaxProgress = max
 }
 
 // ProgressInc incease current progress with int as param
 func (log *LogToStream) ProgressInc(progress int) {
-	var b []byte
-	binary.LittleEndian.PutUint64(b, uint64(progress))
-	log.ProgressStream.Write(b)
+	log.ProgressStream.Write([]byte(strconv.Itoa(progress)))
 	log.CurrentProgress = log.CurrentProgress + progress
 }
 

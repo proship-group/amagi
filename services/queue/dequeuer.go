@@ -28,62 +28,62 @@ type ExecCallback func(Executor) error
 //
 //     go Dequeue("queue_items", callBack, logger, A{}, B{}, C{})
 //
-func Dequeue(queueCollectionName string, callback ExecCallback, logger Logificator, types ...interface{}) {
+func Dequeue(queueCollectionName string, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, types ...interface{}) {
 	QueueCollection = queueCollectionName
 	for _, qtype := range types {
-		go StartDequeue(qtype, callback, logger)
+		go StartDequeue(qtype, callback, queueNotificator, loggerFactory)
 	}
 }
 
 // StartDequeue main dequeuer
-func StartDequeue(qtype interface{}, callback ExecCallback, logger Logificator) {
+func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator) {
 	sleepDuration := getSleepDuration()
 	typeName := GetTypeName(qtype)
 	gob.RegisterName(typeName, qtype)
 	queueItem := Queue{}
 
 	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started for `%v` with %v sleeping time...", typeName, sleepDuration))
-	if logger != nil {
-		defer logger.Finalize()
-	}
 
 	for {
-		// TODO: add concurrency settings? like how many max concurrent execution at the same time
-		if err := queueItem.Dequeue(typeName); err != nil {
-			if err != mgo.ErrNotFound {
-				utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
+		func() {
+			// TODO: add concurrency settings? like how many max concurrent execution at the same time
+			if err := queueItem.Dequeue(typeName, queueNotificator); err != nil {
+				if err != mgo.ErrNotFound {
+					utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
+				}
+				time.Sleep(sleepDuration)
+				return
 			}
-			time.Sleep(sleepDuration)
-			continue
-		}
-		if logger != nil {
+			logger := loggerFactory()
 			logger.Initialize(queueItem.ID.Hex())
-		}
-		defer queueItem.CleanUp()
+			defer logger.Finalize()
 
-		itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
-			queueItem.ID.Hex(),
-			queueItem.ItemExec.Identity(),
-		)
-		utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
-		procStart := time.Now()
-		if err := queueItem.ItemExec.Execute(logger); err != nil {
-			utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
-			defer queueItem.Fail()
-			continue
-		}
-		if callback != nil {
-			if err := callback(queueItem.ItemExec); err != nil {
-				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute(callback) for %s: %v", itemString, err))
+			defer queueItem.CleanUp()
+
+			itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
+				queueItem.ID.Hex(),
+				queueItem.ItemExec.Identity(),
+			)
+			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
+			procStart := time.Now()
+			if err := queueItem.ItemExec.Execute(logger); err != nil {
+				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 				defer queueItem.Fail()
-				continue
+				return
 			}
-		}
-		queueItem.Success()
-		utils.Info(fmt.Sprintf("[Amagi-Queue] Queued %s is done, took: %v",
-			itemString,
-			time.Since(procStart),
-		))
+			if callback != nil {
+				if err := callback(queueItem.ItemExec); err != nil {
+					utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute(callback) for %s: %v", itemString, err))
+					defer queueItem.Fail()
+					return
+				}
+			}
+			queueItem.Success()
+			utils.Info(fmt.Sprintf("[Amagi-Queue] Queued %s is done, took: %v",
+				itemString,
+				time.Since(procStart),
+			))
+		}()
 	}
 }
 

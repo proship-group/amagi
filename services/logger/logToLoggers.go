@@ -25,7 +25,7 @@ type (
 
 // Initialize initialize the logger with the ID
 func (log *LogToLoggers) Initialize(id string) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -38,7 +38,7 @@ func (log *LogToLoggers) Initialize(id string) {
 
 // Info send [INFO] message to log
 func (log *LogToLoggers) Info(message string) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -51,7 +51,7 @@ func (log *LogToLoggers) Info(message string) {
 
 // Warn send [WARN] message to log
 func (log *LogToLoggers) Warn(message string) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -64,7 +64,7 @@ func (log *LogToLoggers) Warn(message string) {
 
 // Error send [ERROR] message to log
 func (log *LogToLoggers) Error(message string) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -77,7 +77,7 @@ func (log *LogToLoggers) Error(message string) {
 
 // Fatal send [FATAL] message to log
 func (log *LogToLoggers) Fatal(message string) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -90,7 +90,7 @@ func (log *LogToLoggers) Fatal(message string) {
 
 // SetProgressMax sets the maximum Progress in int
 func (log *LogToLoggers) SetProgressMax(max int) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -103,7 +103,7 @@ func (log *LogToLoggers) SetProgressMax(max int) {
 
 // ProgressInc incease current progress with int as param
 func (log *LogToLoggers) ProgressInc(progress int) {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {
@@ -116,7 +116,7 @@ func (log *LogToLoggers) ProgressInc(progress int) {
 
 // Finalize finalize the execution and max out progress
 func (log *LogToLoggers) Finalize() {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 	wg.Add(len(log.Loggers))
 	for _, logger := range log.Loggers {
 		go func(logger Logger) {

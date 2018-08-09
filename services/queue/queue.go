@@ -9,7 +9,7 @@ import (
 	"time"
 
 	utils "github.com/b-eee/amagi"
-	"github.com/b-eee/amagi/helpers"
+	// "github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/database"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -59,6 +59,7 @@ type (
 		ItemData   []byte        `bson:"item_data"`
 		ItemType   string        `bson:"item_type"`
 		StreamID   string        `bson:"stream_id"`
+		MetaData   interface{}   `bson:"metadata"`
 
 		ItemExec                  Executor `bson:"-" json:"-"`
 		notFilterQueueNameDequeue bool
@@ -87,7 +88,7 @@ var (
 //
 //     go models.Queue{ItemData: d}.Enqueue()
 //
-func (item Queue) Enqueue() error {
+func (item Queue) Enqueue(callback func(Queue)) error {
 	if item.ItemExec == nil {
 		return fmt.Errorf("Queue item must have ItemExec: %v", item)
 	}
@@ -106,7 +107,7 @@ func (item Queue) Enqueue() error {
 	item.Status = StatusQueued
 	item.CreatedAt = time.Now()
 	item.ItemType = item.ExecName()
-	item.StreamID = helpers.RandString6(128)
+	item.StreamID = "testestestestestest" //helpers.RandString6(128)
 	item.Name = item.ItemExec.Identity()
 	if item.Category == "" {
 		item.Category = item.ExecName()
@@ -115,6 +116,9 @@ func (item Queue) Enqueue() error {
 	if err := coll.Insert(item); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Enqueue: %v", err))
 		return err
+	}
+	if callback != nil {
+		go callback(item)
 	}
 	return nil
 }
@@ -127,7 +131,7 @@ func (item Queue) Enqueue() error {
 //     if err := queueItem.Dequeue(); err != nil {}
 //     fmt.Print(queueItem.Status)
 //
-func (item *Queue) Dequeue(typeName string) error {
+func (item *Queue) Dequeue(typeName string, callback func(interface{})) error {
 	sc := database.SessionCopy()
 	defer sc.Close()
 	coll := sc.DB(database.Db).C(QueueCollection)
@@ -156,6 +160,10 @@ func (item *Queue) Dequeue(typeName string) error {
 	if err := de.Decode(&item.ItemExec); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Decoding GOB: %v", err))
 		return err
+	}
+
+	if callback != nil {
+		go callback(item)
 	}
 	return nil
 }
