@@ -28,15 +28,15 @@ type ExecCallback func(Executor) error
 //
 //     go Dequeue("queue_items", callBack, logger, A{}, B{}, C{})
 //
-func Dequeue(queueCollectionName string, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, types ...interface{}) {
+func Dequeue(queueCollectionName string, execDelay time.Duration, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, types ...interface{}) {
 	QueueCollection = queueCollectionName
 	for _, qtype := range types {
-		go StartDequeue(qtype, callback, queueNotificator, loggerFactory)
+		go StartDequeue(qtype, callback, queueNotificator, loggerFactory, execDelay)
 	}
 }
 
 // StartDequeue main dequeuer
-func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator) {
+func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, execDelay time.Duration) {
 	sleepDuration := getSleepDuration()
 	typeName := GetTypeName(qtype)
 	gob.RegisterName(typeName, qtype)
@@ -47,6 +47,7 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 	for {
 		func() {
 			// TODO: add concurrency settings? like how many max concurrent execution at the same time
+			time.Sleep(execDelay)
 			if err := queueItem.Dequeue(typeName, queueNotificator); err != nil {
 				if err != mgo.ErrNotFound {
 					utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	utils "github.com/b-eee/amagi"
-	// "github.com/b-eee/amagi/helpers"
+	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/database"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -49,17 +49,18 @@ type (
 
 	// Queue object of a queue item
 	Queue struct {
-		ID         bson.ObjectId `bson:"_id"`
-		Name       string        `bson:"name"`
-		Category   string        `bson:"category"`
-		Status     Statuses      `bson:"status"`
-		CreatedAt  time.Time     `bson:"created_at"`
-		StartedAt  time.Time     `bson:"started_at"`
-		FinishedAt time.Time     `bson:"finished_at"`
-		ItemData   []byte        `bson:"item_data"`
-		ItemType   string        `bson:"item_type"`
-		StreamID   string        `bson:"stream_id"`
-		MetaData   interface{}   `bson:"metadata"`
+		ID           bson.ObjectId `bson:"_id"`
+		Name         string        `bson:"name"`
+		Category     string        `bson:"category"`
+		Status       Statuses      `bson:"status"`
+		CreatedAt    time.Time     `bson:"created_at"`
+		StartedAt    time.Time     `bson:"started_at"`
+		FinishedAt   time.Time     `bson:"finished_at"`
+		ItemData     []byte        `bson:"item_data"`
+		ItemIdentity string        `bson:"item_identity"`
+		ItemType     string        `bson:"item_type"`
+		StreamID     string        `bson:"stream_id"`
+		MetaData     interface{}   `bson:"metadata"`
 
 		ItemExec                  Executor `bson:"-" json:"-"`
 		notFilterQueueNameDequeue bool
@@ -107,11 +108,19 @@ func (item Queue) Enqueue(callback func(Queue)) error {
 	item.Status = StatusQueued
 	item.CreatedAt = time.Now()
 	item.ItemType = item.ExecName()
-	item.StreamID = "testestestestestest" //helpers.RandString6(128)
+	item.StreamID = helpers.RandString6(128)
 	item.Name = item.ItemExec.Identity()
 	if item.Category == "" {
 		item.Category = item.ExecName()
 	}
+
+	var ident string
+	if item.ItemIdentity != "" {
+		ident = item.ItemIdentity
+	} else {
+		ident = item.ID.Hex()
+	}
+	item.ItemIdentity = fmt.Sprintf("task_%s_%s", item.ItemType, ident)
 
 	if err := coll.Insert(item); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Enqueue: %v", err))
