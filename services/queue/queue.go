@@ -89,7 +89,7 @@ var (
 //
 //     go models.Queue{ItemData: d}.Enqueue()
 //
-func (item Queue) Enqueue(callback func(Queue)) error {
+func (item *Queue) Enqueue(callback func(Queue)) error {
 	if item.ItemExec == nil {
 		return fmt.Errorf("Queue item must have ItemExec: %v", item)
 	}
@@ -127,7 +127,7 @@ func (item Queue) Enqueue(callback func(Queue)) error {
 		return err
 	}
 	if callback != nil {
-		go callback(item)
+		go callback(*item)
 	}
 	return nil
 }

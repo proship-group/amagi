@@ -47,7 +47,6 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 	for {
 		func() {
 			// TODO: add concurrency settings? like how many max concurrent execution at the same time
-			time.Sleep(execDelay)
 			if err := queueItem.Dequeue(typeName, queueNotificator); err != nil {
 				if err != mgo.ErrNotFound {
 					utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
@@ -65,6 +64,7 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 				queueItem.ID.Hex(),
 				queueItem.ItemExec.Identity(),
 			)
+			time.Sleep(execDelay)
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
 			procStart := time.Now()
 			if err := queueItem.ItemExec.Execute(logger); err != nil {
