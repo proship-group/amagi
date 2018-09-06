@@ -28,7 +28,8 @@ var (
 	verboseMongodb = false
 
 	// ensureMaxWrite counter for max mongodbhost
-	ensureMaxWrite = 1
+	ensureMaxWrite     = 1
+	defaultMongodbPort = "27017"
 
 	maxSyncTimeout time.Duration = 1
 
@@ -55,7 +56,6 @@ func MongodbStart() {
 	defer utils.ExceptionDump()
 
 	cfe, host := setMongodbHost()
-	utils.Info(fmt.Sprintf("connecting to mongodb.. %s", host))
 
 	mongoDBDialInfo := buildMongodBconn(cfe, host)
 	session, err := mongodb.DialWithInfo(&mongoDBDialInfo)
@@ -82,6 +82,13 @@ func MongodbStart() {
 func buildMongodBconn(cfe config.Environment, hosts string) mongodb.DialInfo {
 	mongodbHosts := splitMongodbInstances(hosts)
 	ensureMaxWrite = len(mongodbHosts)
+	for i, host := range mongodbHosts {
+		// if the host doesnt have a port specified, add one from cfe.Port
+		if !strings.Contains(host, ":") {
+			mongodbHosts[i] = fmt.Sprintf("%s:%s", host, cfe.Port)
+		}
+	}
+	utils.Info(fmt.Sprintf("connecting to mongodb.. %s", mongodbHosts))
 	conn := mongodb.DialInfo{
 		Addrs:    mongodbHosts,
 		Timeout:  10 * time.Second,
@@ -141,6 +148,10 @@ func setMongodbHost() (config.Environment, string) {
 		if os.Getenv("HOST") != "" {
 			env.Host = os.Getenv("HOST")
 			// env.Port = "27017"
+		}
+		if env.Port == "" {
+			// set default port
+			env.Port = defaultMongodbPort
 		}
 	}
 
