@@ -132,6 +132,16 @@ func printBsonValue(v interface{}, indent int) {
 			fmt.Print(fmt.Sprintf(format, s))
 		}
 		fmt.Println("]")
+	case []interface{}:
+		fmt.Print("[")
+		for i, val := range v.([]interface{}) {
+			format := "%s"
+			if i < len(v.([]interface{}))-1 {
+				format += ","
+			}
+			fmt.Print(fmt.Sprintf(format, convertInterfaceValue(val)))
+		}
+		fmt.Println("]")
 	case bson.M:
 		printBson(v.(bson.M), indent)
 	case bson.D:
@@ -141,6 +151,22 @@ func printBsonValue(v interface{}, indent int) {
 	default:
 		fmt.Println(fmt.Sprintf("---type:%s---", reflect.TypeOf(v).String()))
 	}
+}
+
+func convertInterfaceValue(v interface{}) string {
+	result := ""
+	switch v.(type) {
+	case bool:
+		result = fmt.Sprintf("%t", v.(bool))
+	case int, int8, int16, int32, int64, float32, float64:
+		result = fmt.Sprintf("%d", v)
+	case string:
+		result = fmt.Sprintf("\"%s\"", v.(string))
+	default:
+		fmt.Println(fmt.Sprintf("---convertInterfaceValue type:%s---", reflect.TypeOf(v).String()))
+	}
+
+	return result
 }
 
 func printBsonIndent(indent int) {
