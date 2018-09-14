@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	utils "github.com/b-eee/amagi"
 	"github.com/b-eee/amagi/services/database"
 
-	utils "github.com/b-eee/amagi"
+	"gopkg.in/mgo.v2/bson"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -165,16 +166,10 @@ func (req *ESSearchReq) ESAddDocument() error {
 		}
 	}
 
-	_, id, err := getIDKeyValue(req)
-	if err != nil {
-		utils.Error(fmt.Sprintf("error getIDKeyValue %v", err))
-		return err
-	}
-
 	res, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
-		Id(id).
+		Id(bson.NewObjectId().Hex()).
 		BodyJson(req.BodyJSON).
 		Refresh("true").
 		Do(CreateContext())
@@ -197,6 +192,10 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 
 	// set delete query key-value
 	key, value, err := getIDKeyValue(req)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error getIDKeyValue %v", err))
+		return err
+	}
 
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
@@ -205,6 +204,13 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 			Must(
 				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
 				elastic.NewMatchQuery(key, value),
+				elastic.NewMatchQuery("w_id", req.BodyJSON.WID),
+				elastic.NewMatchQuery("p_id", req.BodyJSON.PID),
+				elastic.NewMatchQuery("d_id", req.BodyJSON.DID),
+				// elastic.NewMatchQuery("i_id", req.BodyJSON.IID),
+				// elastic.NewMatchQuery("q_id", req.BodyJSON.QID),
+				elastic.NewMatchQuery("f_id", req.BodyJSON.FID),
+				// elastic.NewMatchQuery("a_id", req.BodyJSON.AID),
 			)).
 		Do(CreateContext())
 	if err != nil {
@@ -212,8 +218,8 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v  [category=%v, %v=%v]",
-		time.Since(s), res.Deleted, req.BodyJSON.Category, key, value))
+	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v",
+		time.Since(s), res.Deleted))
 	return nil
 }
 
