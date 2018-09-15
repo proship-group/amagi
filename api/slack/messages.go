@@ -2,6 +2,7 @@ package slack
 
 import (
 	"fmt"
+
 	"github.com/nlopes/slack"
 )
 
