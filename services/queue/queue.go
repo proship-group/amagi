@@ -55,7 +55,7 @@ type (
 		Status       Statuses      `bson:"status"`
 		CreatedAt    time.Time     `bson:"created_at"`
 		StartedAt    time.Time     `bson:"started_at"`
-		FinishedAt   time.Time     `bson:"finished_at"`
+		FinishedAt   *time.Time    `bson:"finished_at"`
 		ItemData     []byte        `bson:"item_data"`
 		ItemIdentity string        `bson:"item_identity"`
 		ItemType     string        `bson:"item_type"`
@@ -172,7 +172,7 @@ func (item *Queue) Dequeue(typeName string, callback func(interface{})) error {
 	}
 
 	if callback != nil {
-		go callback(item)
+		callback(item)
 	}
 	return nil
 }
