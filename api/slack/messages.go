@@ -2,7 +2,8 @@ package slack
 
 import (
 	"fmt"
-	"github.com/richmondwang/slack"
+
+	"github.com/nlopes/slack"
 )
 
 var (

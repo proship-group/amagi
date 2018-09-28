@@ -144,6 +144,16 @@ func printBsonValue(v interface{}, indent int) {
 		fmt.Println("]")
 	case bson.M:
 		printBson(v.(bson.M), indent)
+	case []bson.M:
+		fmt.Println("[")
+		indent++
+		for _, val := range v.([]bson.M) {
+			printBsonIndent(indent)
+			printBson(val, indent)
+		}
+		indent--
+		printBsonIndent(indent)
+		fmt.Println("]")
 	case bson.D:
 		printBsonD(v.(bson.D), indent)
 	case bson.DocElem:

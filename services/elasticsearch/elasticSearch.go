@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	utils "github.com/b-eee/amagi"
 	"github.com/b-eee/amagi/services/database"
 
-	utils "github.com/b-eee/amagi"
+	"gopkg.in/mgo.v2/bson"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
@@ -165,16 +166,10 @@ func (req *ESSearchReq) ESAddDocument() error {
 		}
 	}
 
-	_, id, err := getIDKeyValue(req)
-	if err != nil {
-		utils.Error(fmt.Sprintf("error getIDKeyValue %v", err))
-		return err
-	}
-
 	res, err := database.ESGetConn().Index().
 		Index(indexName).
 		Type(req.Type).
-		Id(id).
+		Id(bson.NewObjectId().Hex()).
 		BodyJson(req.BodyJSON).
 		Refresh("true").
 		Do(CreateContext())
@@ -195,25 +190,24 @@ func (req *ESSearchReq) ESDeleteDocument() error {
 	// USE GLOBAL COMMON INDEX !!  TODO: Refactor ,HI
 	req.IndexName = IndexNameGlobalSearch
 
-	// set delete query key-value
-	key, value, err := getIDKeyValue(req)
+	matchQueryArray, err := buildElasticMatchQuery(req)
+	if err != nil {
+		utils.Warn(fmt.Sprintf("error buildElasticMatchQuery %v", err))
+		return err
+	}
 
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
 		Index(strings.Split(req.IndexName, ",")...).
-		Query(elastic.NewBoolQuery().
-			Must(
-				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
-				elastic.NewMatchQuery(key, value),
-			)).
+		Query(elastic.NewBoolQuery().Must(matchQueryArray...)).
 		Do(CreateContext())
 	if err != nil {
-		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
+		utils.Warn(fmt.Sprintf("error ESDeleteDocument %v", err))
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v  [category=%v, %v=%v]",
-		time.Since(s), res.Deleted, req.BodyJSON.Category, key, value))
+	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v",
+		time.Since(s), res.Deleted))
 	return nil
 }
 
@@ -246,6 +240,40 @@ func getIDKeyValue(req *ESSearchReq) (key string, value string, err error) {
 		value = req.BodyJSON.PID
 	default:
 		return "", "", fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category)
+	}
+
+	err = nil
+	return
+}
+
+func buildElasticMatchQuery(req *ESSearchReq) (matchQueryArray []elastic.Query, err error) {
+	// set delete query key-value
+	key, value, err := getIDKeyValue(req)
+	if err != nil {
+		utils.Warn(fmt.Sprintf("error getIDKeyValue %v", err))
+		return nil, err
+	}
+
+	// utils.Pretty(req.BodyJSON, "buildElasticMatchQuery")
+
+	switch req.BodyJSON.Category {
+	case IndexNameHistories, IndexNameFiles, IndexNameQueries, IndexNameNewActions, IndexNameFieldValues:
+		matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery("d_id", req.BodyJSON.DID))
+		matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery("p_id", req.BodyJSON.WID))
+		fallthrough
+	case IndexNameProjects:
+		matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery("w_id", req.BodyJSON.WID))
+		fallthrough
+	case IndexNameItems:
+		matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category))
+		if req.BodyJSON.FID != "" {
+			matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery("f_id", req.BodyJSON.FID))
+		}
+		fallthrough
+	case IndexNameDatastores:
+		matchQueryArray = append(matchQueryArray, elastic.NewMatchQuery(key, value))
+	default:
+		return matchQueryArray, fmt.Errorf("Invalid category [ %v ]", req.BodyJSON.Category)
 	}
 
 	err = nil
