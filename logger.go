@@ -21,6 +21,11 @@ var (
 	}
 )
 
+type (
+	// UtilsLogger alias for root functions
+	UtilsLogger struct{}
+)
+
 // Init initialize slack API
 func Init(host slack.Host) {
 	slack.Init(host)
@@ -111,3 +116,35 @@ func PrettyPrintTime(timeVal time.Time) string {
 func errMsgFmt(logLevel, msg string) string {
 	return fmt.Sprintf("%s %s", timeLoglevel(logLevel), msg)
 }
+
+// Initialize initialize the logger with the ID
+func (log *UtilsLogger) Initialize(id string) {}
+
+// Info send [INFO] message to log
+func (log *UtilsLogger) Info(message string) {
+	Info(message)
+}
+
+// Warn send [WARN] message to log
+func (log *UtilsLogger) Warn(message string) {
+	Warn(message)
+}
+
+// Error send [ERROR] message to log
+func (log *UtilsLogger) Error(message string) {
+	Error(message)
+}
+
+// Fatal send [FATAL] message to log
+func (log *UtilsLogger) Fatal(message string) {
+	Fatal(message)
+}
+
+// SetProgressMax sets the maximum Progress in int
+func (log *UtilsLogger) SetProgressMax(max int) {}
+
+// ProgressInc incease current progress with int as param
+func (log *UtilsLogger) ProgressInc(progress int) {}
+
+// Finalize finalize the execution and max out progress
+func (log *UtilsLogger) Finalize() {}

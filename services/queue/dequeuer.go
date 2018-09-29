@@ -26,16 +26,17 @@ type ExecCallback func(Executor) error
 //
 // For example:
 //
-//     go Dequeue(A{}, B{}, C{})
+//     go Dequeue("queue_items", callBack, logger, A{}, B{}, C{})
 //
-func Dequeue(queueCollectionName string, callback ExecCallback, types ...interface{}) {
+func Dequeue(queueCollectionName string, execDelay time.Duration, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, types ...interface{}) {
 	QueueCollection = queueCollectionName
 	for _, qtype := range types {
-		go startDequeuefunc(qtype, callback)
+		go StartDequeue(qtype, callback, queueNotificator, loggerFactory, execDelay)
 	}
 }
 
-func startDequeuefunc(qtype interface{}, callback ExecCallback) {
+// StartDequeue main dequeuer
+func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator func(interface{}), loggerFactory func() Logificator, execDelay time.Duration) {
 	sleepDuration := getSleepDuration()
 	typeName := GetTypeName(qtype)
 	gob.RegisterName(typeName, qtype)
@@ -44,24 +45,29 @@ func startDequeuefunc(qtype interface{}, callback ExecCallback) {
 	utils.Info(fmt.Sprintf("[Amagi-Queue] Dequeuer started for `%v` with %v sleeping time...", typeName, sleepDuration))
 
 	for {
-		// TODO: add concurrency settings? like how many max concurrent execution at the same time
 		func() {
-			if err := queueItem.Dequeue(typeName); err != nil {
+			// TODO: add concurrency settings? like how many max concurrent execution at the same time
+			if err := queueItem.Dequeue(typeName, queueNotificator); err != nil {
 				if err != mgo.ErrNotFound {
 					utils.Info(fmt.Sprintf("[Amagi-Queue] Error during dequeue for `%s`: %v", typeName, err))
 				}
 				time.Sleep(sleepDuration)
 				return
 			}
+			logger := loggerFactory()
+			logger.Initialize(queueItem.ID.Hex())
+			defer logger.Finalize()
+
 			defer queueItem.CleanUp()
 
 			itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
 				queueItem.ID.Hex(),
 				queueItem.ItemExec.Identity(),
 			)
+			time.Sleep(execDelay)
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
 			procStart := time.Now()
-			if err := queueItem.ItemExec.Execute(); err != nil {
+			if err := queueItem.ItemExec.Execute(logger); err != nil {
 				utils.Error(fmt.Sprintf("[Amagi-Queue] error queueItem.Execute for %s: %v", itemString, err))
 				defer queueItem.Fail()
 				return
