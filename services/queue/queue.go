@@ -9,6 +9,7 @@ import (
 	"time"
 
 	utils "github.com/b-eee/amagi"
+	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/database"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -18,9 +19,29 @@ type (
 	// Executor queue execute command
 	Executor interface {
 		// Execute the method to call during dequeueing
-		Execute() error
+		Execute(Logificator) error
 		// Identity must be an identifying string for the item
 		Identity() string
+	}
+
+	// Logificator logging interface for queue Execute
+	Logificator interface {
+		// Initialize initialize the logger with the ID
+		Initialize(string)
+		// Info send [INFO] message to log
+		Info(string)
+		// Warn send [WARN] message to log
+		Warn(string)
+		// Error send [ERROR] message to log
+		Error(string)
+		// Fatal send [FATAL] message to log
+		Fatal(string)
+		// SetProgressMax sets the maximum Progress in int
+		SetProgressMax(int)
+		// ProgressInc incease current progress with int as param
+		ProgressInc(int)
+		// Finalize finalize the execution and max out progress
+		Finalize()
 	}
 
 	// Statuses import queue statuses
@@ -28,13 +49,18 @@ type (
 
 	// Queue object of a queue item
 	Queue struct {
-		ID         bson.ObjectId `bson:"_id"`
-		Status     Statuses      `bson:"status"`
-		CreatedAt  time.Time     `bson:"created_at"`
-		StartedAt  time.Time     `bson:"started_at"`
-		FinishedAt time.Time     `bson:"finished_at"`
-		ItemData   []byte        `bson:"item_data"`
-		ItemType   string        `bson:"item_type"`
+		ID           bson.ObjectId `bson:"_id"`
+		Name         string        `bson:"name"`
+		Category     string        `bson:"category"`
+		Status       Statuses      `bson:"status"`
+		CreatedAt    time.Time     `bson:"created_at"`
+		StartedAt    time.Time     `bson:"started_at"`
+		FinishedAt   *time.Time    `bson:"finished_at"`
+		ItemData     []byte        `bson:"item_data"`
+		ItemIdentity string        `bson:"item_identity"`
+		ItemType     string        `bson:"item_type"`
+		StreamID     string        `bson:"stream_id"`
+		MetaData     interface{}   `bson:"metadata"`
 
 		ItemExec                  Executor `bson:"-" json:"-"`
 		notFilterQueueNameDequeue bool
@@ -63,7 +89,7 @@ var (
 //
 //     go models.Queue{ItemData: d}.Enqueue()
 //
-func (item Queue) Enqueue() error {
+func (item *Queue) Enqueue(callback func(Queue)) error {
 	if item.ItemExec == nil {
 		return fmt.Errorf("Queue item must have ItemExec: %v", item)
 	}
@@ -82,10 +108,26 @@ func (item Queue) Enqueue() error {
 	item.Status = StatusQueued
 	item.CreatedAt = time.Now()
 	item.ItemType = item.ExecName()
+	item.StreamID = helpers.RandString6(128)
+	item.Name = item.ItemExec.Identity()
+	if item.Category == "" {
+		item.Category = item.ExecName()
+	}
+
+	var ident string
+	if item.ItemIdentity != "" {
+		ident = item.ItemIdentity
+	} else {
+		ident = item.ID.Hex()
+	}
+	item.ItemIdentity = fmt.Sprintf("task_%s_%s", item.ItemType, ident)
 
 	if err := coll.Insert(item); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Enqueue: %v", err))
 		return err
+	}
+	if callback != nil {
+		go callback(*item)
 	}
 	return nil
 }
@@ -98,7 +140,7 @@ func (item Queue) Enqueue() error {
 //     if err := queueItem.Dequeue(); err != nil {}
 //     fmt.Print(queueItem.Status)
 //
-func (item *Queue) Dequeue(typeName string) error {
+func (item *Queue) Dequeue(typeName string, callback func(interface{})) error {
 	sc := database.SessionCopy()
 	defer sc.Close()
 	coll := sc.DB(database.Db).C(QueueCollection)
@@ -127,6 +169,10 @@ func (item *Queue) Dequeue(typeName string) error {
 	if err := de.Decode(&item.ItemExec); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Decoding GOB: %v", err))
 		return err
+	}
+
+	if callback != nil {
+		callback(item)
 	}
 	return nil
 }
@@ -203,5 +249,6 @@ func (status Statuses) String() string {
 		"StatusQueued",
 		"StatusProgress",
 		"StatusDone",
-	}[status]
+		"StatusError",
+	}[int(status)]
 }

@@ -60,11 +60,9 @@ func Send(errmsg interface{}, errStr string) error {
 	if ok, err := validateCanSend(); !ok && err != nil {
 		return err
 	}
-	params := slack.PostMessageParameters{}
 
-	chanID, _, err := SlackToken.PostMessage(LogChannel,
-		fmt.Sprintf("```host=%v error %v\n ====\n %v ```", CurrentHost.Hostname(), errmsg, errStr),
-		params)
+	chanID, _, err := SlackToken.PostMessage(LogChannel, slack.MsgOptionText(
+		fmt.Sprintf("```host=%v error %v\n ====\n %v ```", CurrentHost.Hostname(), errmsg, errStr), false))
 	if err != nil {
 		errMsg := fmt.Errorf("error sending to slack %v", err)
 		fmt.Println(errMsg)
