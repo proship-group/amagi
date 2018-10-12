@@ -76,6 +76,8 @@ const (
 	StatusDone
 	// StatusError the item encountered an error
 	StatusError
+	// StatusDead the item was unhealthy and marked as dead
+	StatusDead
 )
 
 var (
@@ -250,5 +252,6 @@ func (status Statuses) String() string {
 		"StatusProgress",
 		"StatusDone",
 		"StatusError",
+		"StatusDead",
 	}[int(status)]
 }
