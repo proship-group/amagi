@@ -57,7 +57,6 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 			logger := loggerFactory()
 			logger.Initialize(queueItem.ID.Hex())
 			defer logger.Finalize()
-
 			defer queueItem.CleanUp()
 
 			itemString := fmt.Sprintf("queue `%v` with Identity `%v`",
@@ -68,6 +67,8 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 			defer func() {
 				if r := recover(); r != nil {
 					utils.Error(fmt.Sprintf("[Amagi-Queue] Queue task panicked: %v", r))
+					logger.Error(fmt.Sprintf("Task exited with error: %v", r))
+					queueItem.Fail()
 				}
 			}()
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
