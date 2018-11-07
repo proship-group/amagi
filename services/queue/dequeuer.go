@@ -65,6 +65,11 @@ func StartDequeue(qtype interface{}, callback ExecCallback, queueNotificator fun
 				queueItem.ItemExec.Identity(),
 			)
 			time.Sleep(execDelay)
+			defer func() {
+				if r := recover(); r != nil {
+					utils.Error(fmt.Sprintf("[Amagi-Queue] Queue task panicked: %v", r))
+				}
+			}()
 			utils.Info(fmt.Sprintf("[Amagi-Queue] Starting process for %s", itemString))
 			procStart := time.Now()
 			if err := queueItem.ItemExec.Execute(logger); err != nil {
