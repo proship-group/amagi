@@ -116,6 +116,8 @@ func printDocElem(doc bson.DocElem, indent int) {
 
 func printBsonValue(v interface{}, indent int) {
 	switch v.(type) {
+	case nil:
+		fmt.Println("null")
 	case bool:
 		fmt.Println(fmt.Sprintf("%t,", v.(bool)))
 	case int, int8, int16, int32, int64, float32, float64:
@@ -166,12 +168,16 @@ func printBsonValue(v interface{}, indent int) {
 func convertInterfaceValue(v interface{}) string {
 	result := ""
 	switch v.(type) {
+	case nil:
+		result = "null"
 	case bool:
 		result = fmt.Sprintf("%t", v.(bool))
 	case int, int8, int16, int32, int64, float32, float64:
 		result = fmt.Sprintf("%d", v)
 	case string:
 		result = fmt.Sprintf("\"%s\"", v.(string))
+	case bson.M:
+		printBson(v.(bson.M), 0)
 	default:
 		fmt.Println(fmt.Sprintf("---convertInterfaceValue type:%s---", reflect.TypeOf(v).String()))
 	}
