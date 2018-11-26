@@ -160,6 +160,35 @@ func (svc *Service) SavePublicObject(file io.Reader) (*storage.ObjectInfo, error
 		svc.publicACL(objectName))
 }
 
+// CopyObject copy object
+func (svc *Service) CopyObject(srcObjectName, dstObjectName string) (*storage.ObjectInfo, error) {
+	res, err := svc.cacheVars.client.Objects.Copy(svc.BucketName, srcObjectName, svc.BucketName, dstObjectName, nil).Do()
+	if err != nil {
+		utils.Error(fmt.Sprintf("Objects.Copy failed: %v", err))
+		return nil, err
+	}
+
+	updated, err := time.Parse(timeLayout, res.Updated)
+	if err != nil {
+		updated = time.Now()
+	}
+
+	mediaLink := res.SelfLink
+	mediaLinkURL, err := url.Parse(mediaLink)
+	if err != nil {
+		utils.Error(fmt.Sprintf("error at parse url %v", err))
+	}
+	mediaLink = fmt.Sprintf("/storage/%s", mediaLinkURL.Path[1:])
+	return &storage.ObjectInfo{
+		Name:         res.Name,
+		SelfLink:     res.SelfLink,
+		MediaLink:    mediaLink,
+		ETag:         res.Etag,
+		LastModified: updated,
+		// Size:         res.Size,
+	}, nil
+}
+
 // DownloadObjectDest save object to file system
 func (svc *Service) DownloadObjectDest(objectName, destFilename string) (localPath string, err error) {
 	localPath = storage.NewTempFile(destFilename)

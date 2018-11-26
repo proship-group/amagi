@@ -23,6 +23,8 @@ type (
 		CreatePublicObject(objectName string, file io.Reader, contentType string) (*ObjectInfo, error)
 		// SavePublicObject save the object in public storage
 		SavePublicObject(file io.Reader) (*ObjectInfo, error)
+		// CopyObject copy object
+		CopyObject(srcObjectName, dstObjectName string) (*ObjectInfo, error)
 		// DownloadObjectDest save object to file system
 		DownloadObjectDest(objectName, destFilename string) (localPath string, err error)
 		// DownloadObject save object to file system with a uniques name
