@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	// "linkermodels"
-
 	utils "github.com/b-eee/amagi"
 )
 
@@ -43,27 +41,28 @@ func CacheSetEx(value interface{}, keys []string, ttl int) error {
 }
 
 // CacheGetEx get string cache and convert to json
-func CacheGetEx(keys []string, sult interface{}, ttl int) error {
+func CacheGetEx(keys []string, sult interface{}, ttl int) (string, error) {
 	s := time.Now()
 	str, err := GetEx(joinKeysToSTR(keys...), ttl)
 	if err != nil {
 		utils.Info(fmt.Sprintf("JSONCacheGetEx Hit miss! %v", err))
-		return err
+		return "", err
 	}
 
-	var result interface{}
-	// fmt.Println(string(str))
-	if err := json.Unmarshal(str, &result); err != nil {
-		utils.Info(fmt.Sprintf("error unmarshal json cache string %v", err))
-		fmt.Println("-------------------ssss------------ssss------------ssss------------ssss------------ssss")
-		return err
-	}
+	// var result interface{}
+	// // fmt.Println(string(str))
+	// if err := json.Unmarshal(str, &sult); err != nil {
+	// 	utils.Info(fmt.Sprintf("error unmarshal json cache string %v", err))
+	// 	fmt.Println("-------------------ssss------------ssss------------ssss------------ssss------------ssss")
+	// 	return err
+	// }
 
-	fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
-	fmt.Println(result)
-	fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
+	// fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
+	// fmt.Println(result)
+	// fmt.Println(sult)
+	// fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
 
-	return utils.Info(fmt.Sprintf("JSONCacheGetEx Hit! took: %v keys: %v", time.Since(s), joinKeysToSTR(keys...)))
+	return string(str), utils.Info(fmt.Sprintf("JSONCacheGetEx Hit! took: %v keys: %v", time.Since(s), joinKeysToSTR(keys...)))
 }
 
 // CacheDelete json cache delete
