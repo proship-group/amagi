@@ -37,7 +37,7 @@ func StartElasticSearch() {
 	}
 	if err != nil {
 		utils.Fatal(fmt.Sprintf("error StartElasticSearch %v", err))
-		panic(err)
+		// panic(err)
 	}
 
 	ESConn = client
