@@ -66,8 +66,7 @@ func SetEx(key, value string, ttl int) error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("SetEx took: %v", time.Since(s)))
-	return nil
+	return utils.Info(fmt.Sprintf("SetEx took: %v", time.Since(s)))
 }
 
 // GetEx get kv and update expire
@@ -94,8 +93,6 @@ func GetEx(key string, ttl int) ([]uint8, error) {
 
 	str, err := redis.Values(c.Do("EXEC"))
 	if err != nil || str[1] == nil {
-		fmt.Println(str[1] == nil)
-		fmt.Println("----------------------------------oooooooooooooooooooooo------------oooooooooooooooooooooo------------oooooooooooooooooooooo------------oooooooooooooooooooooo")
 		return []uint8{}, utils.Error(fmt.Sprintf("error EXEC inGetEx %v", err))
 	}
 

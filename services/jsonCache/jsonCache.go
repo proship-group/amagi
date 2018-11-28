@@ -33,36 +33,29 @@ func CacheSetEx(value interface{}, keys []string, ttl int) error {
 	}
 
 	if err := SetEx(joinKeysToSTR(keys...), strVal, ttl); err != nil {
-		utils.Info(fmt.Sprintf("JSONCacheSet %v", err))
+		utils.Info(fmt.Sprintf("CacheSetEx %v", err))
 		return err
 	}
 
-	return utils.Info(fmt.Sprintf("JSONCacheSet took: %v key: %v ===============+================", time.Since(s), keys))
+	return utils.Info(fmt.Sprintf("CacheSetEx took: %v key: %v ", time.Since(s), keys))
 }
 
 // CacheGetEx get string cache and convert to json
-func CacheGetEx(keys []string, sult interface{}, ttl int) (string, error) {
+func CacheGetEx(keys []string, target interface{}, ttl int) error {
 	s := time.Now()
 	str, err := GetEx(joinKeysToSTR(keys...), ttl)
 	if err != nil {
-		utils.Info(fmt.Sprintf("JSONCacheGetEx Hit miss! %v", err))
-		return "", err
+		utils.Info(fmt.Sprintf("CacheGetEx Hit miss! %v ", err))
+		return err
 	}
 
-	// var result interface{}
-	// // fmt.Println(string(str))
-	// if err := json.Unmarshal(str, &sult); err != nil {
-	// 	utils.Info(fmt.Sprintf("error unmarshal json cache string %v", err))
-	// 	fmt.Println("-------------------ssss------------ssss------------ssss------------ssss------------ssss")
-	// 	return err
-	// }
+	if err := json.Unmarshal(str, target); err != nil {
+		utils.Info(fmt.Sprintf("error in CacheGetEx json Unmarshal %v", err))
+		return err
+	}
 
-	// fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
-	// fmt.Println(result)
-	// fmt.Println(sult)
-	// fmt.Println("--------------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx----------------xxxx")
-
-	return string(str), utils.Info(fmt.Sprintf("JSONCacheGetEx Hit! took: %v keys: %v", time.Since(s), joinKeysToSTR(keys...)))
+	// return string(str), utils.Info(fmt.Sprintf("CacheGetEx Hit! took: %v keys: %v", time.Since(s), joinKeysToSTR(keys...)))
+	return utils.Info(fmt.Sprintf("CacheGetEx Hit! took: %v keys: %v", time.Since(s), joinKeysToSTR(keys...)))
 }
 
 // CacheDelete json cache delete
@@ -73,7 +66,16 @@ func CacheDelete(keys []string) error {
 		return err
 	}
 
-	utils.Info(fmt.Sprintf("JSONCacheDelete took %v", time.Since(s)))
+	utils.Info(fmt.Sprintf("CacheDelete took %v", time.Since(s)))
+	return nil
+}
+
+// StringToStruct util for unmarshalling string to struct
+func StringToStruct(result string, target interface{}) error {
+	if err := json.Unmarshal([]byte(result), &target); err != nil {
+		return utils.Error(fmt.Sprintf("error in StringToStruct %v", err))
+	}
+
 	return nil
 }
 
