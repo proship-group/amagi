@@ -139,6 +139,30 @@ func (svc *Service) SavePublicObject(file io.Reader) (*storage.ObjectInfo, error
 	)
 }
 
+// CopyObject copy object
+func (svc *Service) CopyObject(srcObjectName, dstObjectName string) (*storage.ObjectInfo, error) {
+	src := minio.NewSourceInfo(svc.BucketName, srcObjectName, nil)
+	dst, err := minio.NewDestinationInfo(svc.BucketName, dstObjectName, nil, nil)
+	if err != nil {
+		utils.Error(fmt.Sprintf("minio.NewDestinationInfo in minio.CopyObject failed: %v", err))
+		return nil, err
+	}
+
+	if err := svc.cacheVars.client.CopyObject(dst, src); err != nil {
+		utils.Error(fmt.Sprintf("client.CopyObject in minio.CopyObject failed: %v", err))
+		return nil, err
+	}
+
+	return &storage.ObjectInfo{
+		Name:         dstObjectName,
+		MediaLink:    fmt.Sprintf("/storage/%s/%s", svc.BucketName, dstObjectName),
+		SelfLink:     fmt.Sprintf("%s/%s", svc.BucketName, dstObjectName),
+		ETag:         "",
+		LastModified: time.Now(),
+		// Size:         uint64(n),
+	}, nil
+}
+
 // DownloadObjectDest save the object in public storage with a unique random name
 func (svc *Service) DownloadObjectDest(objectName, destFilename string) (string, error) {
 	destFilename = storage.NewTempFile(destFilename)
