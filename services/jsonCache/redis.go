@@ -2,7 +2,7 @@ package jsonCache
 
 import (
 	"fmt"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/b-eee/amagi/services/database"
@@ -12,16 +12,17 @@ import (
 )
 
 var (
-	// EnableCacheEnv enable cache environment variable
-	EnableCacheEnv = "ENABLE_REDIS_CACHE"
 
 	// KeyExpiration max key Time To Live seconds
 	KeyExpiration = 10000000
+
+	// DefaultKeySeperator default redis keys seperators for keywords
+	DefaultKeySeperator = ":"
 )
 
 // Set set key and value string to redis
 func Set(key, value string) error {
-	if os.Getenv(EnableCacheEnv) != "1" {
+	if !database.RedisCacheEnabled {
 		return fmt.Errorf("redis Set cache disabled")
 	}
 
@@ -39,7 +40,7 @@ func Set(key, value string) error {
 
 // SetEx set KV with expire
 func SetEx(key, value string, ttl int) error {
-	if os.Getenv(EnableCacheEnv) != "1" {
+	if !database.RedisCacheEnabled {
 		return fmt.Errorf("redis SetEx cache disabled")
 	}
 
@@ -71,7 +72,7 @@ func SetEx(key, value string, ttl int) error {
 
 // GetEx get kv and update expire
 func GetEx(key string, ttl int) ([]uint8, error) {
-	if os.Getenv(EnableCacheEnv) != "1" {
+	if !database.RedisCacheEnabled {
 		return []uint8{}, fmt.Errorf("redis SetEx cache disabled")
 	}
 
@@ -93,7 +94,7 @@ func GetEx(key string, ttl int) ([]uint8, error) {
 
 	str, err := redis.Values(c.Do("EXEC"))
 	if err != nil || str[1] == nil {
-		return []uint8{}, utils.Error(fmt.Sprintf("error EXEC inGetEx %v", err))
+		return []uint8{}, utils.Error(fmt.Sprintf("error EXEC in GetEx %v", err))
 	}
 
 	return str[1].([]byte), utils.Info(fmt.Sprintf("GetEx took: %v", time.Since(s)))
@@ -101,7 +102,7 @@ func GetEx(key string, ttl int) ([]uint8, error) {
 
 // Get get value from redis
 func Get(key string) (string, error) {
-	if os.Getenv(EnableCacheEnv) != "1" {
+	if !database.RedisCacheEnabled {
 		return "", fmt.Errorf("redis Get cache disabled")
 	}
 
@@ -119,7 +120,7 @@ func Get(key string) (string, error) {
 
 // Delete delete key w/ values
 func Delete(key string) error {
-	if os.Getenv(EnableCacheEnv) != "1" {
+	if !database.RedisCacheEnabled {
 		return fmt.Errorf("redis Delete cache disabled")
 	}
 	c := database.GetRedisConn()
@@ -132,4 +133,43 @@ func Delete(key string) error {
 	}
 
 	return nil
+}
+
+// DelByPattern delete keys by pattern
+func DelByPattern(pattern ...string) error {
+	s := time.Now()
+	if !database.RedisCacheEnabled {
+		return fmt.Errorf("redis delete by pattern disabled")
+	}
+
+	c := database.GetRedisConn()
+	defer c.Close()
+
+	keys, err := redis.Strings(c.Do("KEYS", JoinKeyWords(pattern...)))
+	if err != nil {
+		return err
+	}
+
+	if err := c.Send("MULTI"); err != nil {
+		return utils.Error(fmt.Sprintf("error in DelByPattern MULTI %v", err))
+	}
+
+	for _, key := range keys {
+		if err := c.Send("DEL", key); err != nil {
+			utils.Error(fmt.Sprintf("error EXEC %v", err))
+			continue
+		}
+	}
+
+	if _, err := c.Do("EXEC"); err != nil {
+		utils.Error(fmt.Sprintf("error EXEC %v", err))
+		return err
+	}
+
+	return utils.Info(fmt.Sprintf("DelByPattern took: %v", time.Since(s)))
+}
+
+// JoinKeyWords join keywords to produce redis key
+func JoinKeyWords(keyword ...string) string {
+	return strings.Join(keyword, DefaultKeySeperator)
 }

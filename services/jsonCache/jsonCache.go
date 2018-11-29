@@ -3,7 +3,6 @@ package jsonCache
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	utils "github.com/b-eee/amagi"
@@ -81,5 +80,5 @@ func StringToStruct(result string, target interface{}) error {
 
 func joinKeysToSTR(keys ...string) string {
 
-	return strings.Join(keys, ":")
+	return JoinKeyWords(keys...)
 }
