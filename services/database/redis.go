@@ -21,6 +21,11 @@ var (
 	RedisPortENV = "REDIS_PORT_ENV"
 	// RedisAuthENV redis auth environment name
 	RedisAuthENV = "REDIS_AUTH_ENV"
+
+	// EnableCacheEnv enable cache environment variable
+	EnableCacheEnv = "ENABLE_REDIS_CACHE"
+	// RedisCacheEnabled switch for enable/disable cache
+	RedisCacheEnabled = false
 )
 
 // StartRedis start connecting to redis
@@ -39,6 +44,7 @@ func StartRedis() {
 
 	hostString := fmt.Sprintf("%v:%v", env.Host, env.Port)
 	RedisPool = newPool(hostString, env.Password)
+	RedisCacheEnabled = os.Getenv(EnableCacheEnv) == "1"
 }
 
 func newPool(serverConnStr, password string) *redis.Pool {
@@ -66,5 +72,9 @@ func newPool(serverConnStr, password string) *redis.Pool {
 
 // GetRedisConn get redis connection from pool
 func GetRedisConn() redis.Conn {
+	fmt.Println("GetRedisConn", RedisPool == nil)
+	if RedisPool == nil {
+		StartRedis()
+	}
 	return RedisPool.Get()
 }
