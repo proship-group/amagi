@@ -94,7 +94,7 @@ func GetEx(key string, ttl int) ([]uint8, error) {
 
 	str, err := redis.Values(c.Do("EXEC"))
 	if err != nil || str[1] == nil {
-		return []uint8{}, utils.Error(fmt.Sprintf("error EXEC in GetEx %v", err))
+		return []uint8{}, fmt.Errorf("error EXEC in GetEx %v key: %v", err, key)
 	}
 
 	return str[1].([]byte), utils.Info(fmt.Sprintf("GetEx took: %v", time.Since(s)))
