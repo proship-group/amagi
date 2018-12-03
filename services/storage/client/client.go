@@ -67,7 +67,7 @@ func InitStorageClient() {
 	}
 	utils.Info(fmt.Sprintf("InitStorageClient %v", Client))
 	if err := Client.Initialize(); err != nil {
-		panic(err)
+		// panic(err)
 	}
 	utils.Info(fmt.Sprintf("InitStorageClient took: %v", time.Since(s)))
 }
