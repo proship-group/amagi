@@ -145,7 +145,8 @@ func DelByPattern(pattern ...string) error {
 	c := database.GetRedisConn()
 	defer c.Close()
 
-	keys, err := redis.Strings(c.Do("KEYS", JoinKeyWords(pattern...)))
+	keywords := JoinKeyWords(pattern...)
+	keys, err := redis.Strings(c.Do("KEYS", keywords))
 	if err != nil {
 		return err
 	}
@@ -161,12 +162,12 @@ func DelByPattern(pattern ...string) error {
 		}
 	}
 
-	if _, err := c.Do("EXEC"); err != nil {
-		utils.Error(fmt.Sprintf("error EXEC %v", err))
-		return err
+	values, err := redis.Values(c.Do("EXEC"))
+	if err != nil {
+		return fmt.Errorf("error EXEC %v", err)
 	}
 
-	return utils.Info(fmt.Sprintf("DelByPattern took: %v", time.Since(s)))
+	return utils.Info(fmt.Sprintf("DelByPattern took: %v keywords: %v keys: %v  response_val: %v ===========================", time.Since(s), keywords, keys, values))
 }
 
 // JoinKeyWords join keywords to produce redis key
