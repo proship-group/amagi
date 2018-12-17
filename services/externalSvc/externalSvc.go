@@ -54,6 +54,11 @@ var (
 	EnvNotificatorHost = EnvVar{"BEEE_NOTIFICATOR_SERVICE_HOST", "localhost"}
 	// EnvNotificatorPort env name for configctl port
 	EnvNotificatorPort = EnvVar{"BEEE_NOTIFICATOR_SERVICE_PORT", "8081"}
+
+	// EnvLogStockerHost env name for logstocker host
+	EnvLogStockerHost = EnvVar{"BEEE_LOGSTOCKER_SERVICE_HOST", "localhost"}
+	// EnvLogStockerPort env name for logstocker port
+	EnvLogStockerPort = EnvVar{"BEEE_LOGSTOCKER_SERVICE_PORT", "2004"}
 )
 
 // String return env value or default

@@ -72,7 +72,6 @@ func newPool(serverConnStr, password string) *redis.Pool {
 
 // GetRedisConn get redis connection from pool
 func GetRedisConn() redis.Conn {
-	fmt.Println("GetRedisConn", RedisPool == nil)
 	if RedisPool == nil {
 		StartRedis()
 	}
