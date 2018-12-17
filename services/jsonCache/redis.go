@@ -162,12 +162,11 @@ func DelByPattern(pattern ...string) error {
 		}
 	}
 
-	values, err := redis.Values(c.Do("EXEC"))
-	if err != nil {
+	if _, err := redis.Values(c.Do("EXEC")); err != nil {
 		return fmt.Errorf("error EXEC %v", err)
 	}
 
-	return utils.Info(fmt.Sprintf("DelByPattern took: %v keywords: %v keys: %v  response_val: %v ===========================", time.Since(s), keywords, keys, values))
+	return utils.Info(fmt.Sprintf("DelByPattern took: %v keywords: %v keys: %v ", time.Since(s), keywords, keys))
 }
 
 // JoinKeyWords join keywords to produce redis key
