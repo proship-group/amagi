@@ -94,7 +94,7 @@ func GetEx(key string, ttl int) ([]uint8, error) {
 
 	str, err := redis.Values(c.Do("EXEC"))
 	if err != nil || str[1] == nil {
-		return []uint8{}, utils.Error(fmt.Sprintf("error EXEC in GetEx %v", err))
+		return []uint8{}, fmt.Errorf("error EXEC in GetEx %v key: %v", err, key)
 	}
 
 	return str[1].([]byte), utils.Info(fmt.Sprintf("GetEx took: %v", time.Since(s)))
@@ -145,7 +145,8 @@ func DelByPattern(pattern ...string) error {
 	c := database.GetRedisConn()
 	defer c.Close()
 
-	keys, err := redis.Strings(c.Do("KEYS", JoinKeyWords(pattern...)))
+	keywords := JoinKeyWords(pattern...)
+	keys, err := redis.Strings(c.Do("KEYS", keywords))
 	if err != nil {
 		return err
 	}
@@ -161,12 +162,11 @@ func DelByPattern(pattern ...string) error {
 		}
 	}
 
-	if _, err := c.Do("EXEC"); err != nil {
-		utils.Error(fmt.Sprintf("error EXEC %v", err))
-		return err
+	if _, err := redis.Values(c.Do("EXEC")); err != nil {
+		return fmt.Errorf("error EXEC %v", err)
 	}
 
-	return utils.Info(fmt.Sprintf("DelByPattern took: %v", time.Since(s)))
+	return utils.Info(fmt.Sprintf("DelByPattern took: %v keywords: %v keys: %v ", time.Since(s), keywords, keys))
 }
 
 // JoinKeyWords join keywords to produce redis key
