@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"reflect"
+	"time"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -122,6 +123,8 @@ func printBsonValue(v interface{}, indent int) {
 		fmt.Println(fmt.Sprintf("%t,", v.(bool)))
 	case int, int8, int16, int32, int64, float32, float64:
 		fmt.Println(fmt.Sprintf("%d,", v))
+	case time.Time:
+		fmt.Println(fmt.Sprintf("ISODate(\"%v\"),", v.(time.Time).UTC().Format("2006-01-02T15:04:05.000Z")))
 	case string:
 		fmt.Println(fmt.Sprintf("\"%s\",", v))
 	case []string:
@@ -141,7 +144,7 @@ func printBsonValue(v interface{}, indent int) {
 			if i < len(v.([]interface{}))-1 {
 				format += ","
 			}
-			fmt.Print(fmt.Sprintf(format, convertInterfaceValue(val)))
+			fmt.Print(fmt.Sprintf(format, convertInterfaceValue(val, indent)))
 		}
 		fmt.Println("]")
 	case bson.M:
@@ -165,7 +168,7 @@ func printBsonValue(v interface{}, indent int) {
 	}
 }
 
-func convertInterfaceValue(v interface{}) string {
+func convertInterfaceValue(v interface{}, indent int) string {
 	result := ""
 	switch v.(type) {
 	case nil:
@@ -177,7 +180,15 @@ func convertInterfaceValue(v interface{}) string {
 	case string:
 		result = fmt.Sprintf("\"%s\"", v.(string))
 	case bson.M:
-		printBson(v.(bson.M), 0)
+		fmt.Println("{")
+		indent++
+		for k, v := range v.(bson.M) {
+			printBsonIndent(indent)
+			fmt.Print(fmt.Sprintf("\"%s\":", k))
+			printBsonValue(v, indent)
+		}
+		printBsonIndent(indent - 1)
+		fmt.Print("}")
 	default:
 		fmt.Println(fmt.Sprintf("---convertInterfaceValue type:%s---", reflect.TypeOf(v).String()))
 	}
