@@ -9,7 +9,7 @@ import (
 
 	utils "github.com/b-eee/amagi"
 	dbUtils "github.com/b-eee/amagi/services/database"
-	influx "github.com/influxdata/influxdb/client/v2"
+	influx "github.com/influxdata/influxdb1-client/v2"
 )
 
 var (
