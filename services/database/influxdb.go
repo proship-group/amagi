@@ -8,7 +8,7 @@ import (
 	"github.com/b-eee/amagi/services/configctl"
 
 	utils "github.com/b-eee/amagi"
-	influx "github.com/influxdata/influxdb/client/v2"
+	influx "github.com/influxdata/influxdb1-client/v2"
 )
 
 var (
