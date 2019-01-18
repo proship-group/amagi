@@ -193,11 +193,11 @@ func SessionCopy() *mongodb.Session {
 	sc := MongodbSession.Copy()
 
 	// setMode ref: https://godoc.org/labix.org/v2/mgo#Session.SetMode
-	sc.SetMode(mongodb.PrimaryPreferred, true)
+	// sc.SetMode(mongodb.PrimaryPreferred, true)
 
 	// https://godoc.org/labix.org/v2/mgo#Session.SetSafe
 	// W: 2  atleast two instances confirm of writes
-	sc.SetSafe(&mongodb.Safe{WMode: "majority", W: ensureMaxWrite, FSync: true})
+	// sc.SetSafe(&mongodb.Safe{WMode: "majority", W: ensureMaxWrite, FSync: true})
 	sc.SetSyncTimeout(maxSyncTimeout * time.Second)
 	sc.SetSocketTimeout(maxSyncTimeout * time.Hour)
 	return sc
