@@ -8,7 +8,7 @@ import (
 	"time"
 
 	utils "github.com/b-eee/amagi"
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 const (

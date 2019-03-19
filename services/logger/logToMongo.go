@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	mongodb "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	mongodb "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 type (

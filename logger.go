@@ -9,7 +9,7 @@ import (
 	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/sentry"
 	"github.com/k0kubun/pp"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 var (

@@ -11,8 +11,8 @@ import (
 	utils "github.com/b-eee/amagi"
 	"github.com/b-eee/amagi/helpers"
 	"github.com/b-eee/amagi/services/database"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 type (

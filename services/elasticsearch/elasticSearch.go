@@ -9,7 +9,7 @@ import (
 	utils "github.com/b-eee/amagi"
 	"github.com/b-eee/amagi/services/database"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
