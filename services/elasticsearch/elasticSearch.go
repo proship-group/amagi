@@ -185,29 +185,30 @@ func (req *ESSearchReq) ESAddDocument() error {
 
 // ESDeleteDocument delete document
 func (req *ESSearchReq) ESDeleteDocument() error {
-	s := time.Now()
+	// s := time.Now()
 
 	// USE GLOBAL COMMON INDEX !!  TODO: Refactor ,HI
 	req.IndexName = IndexNameGlobalSearch
 
-	matchQueryArray, err := buildElasticMatchQuery(req)
-	if err != nil {
-		utils.Warn(fmt.Sprintf("error buildElasticMatchQuery %v", err))
-		return err
-	}
+	// set delete query key-value
+	key, value, err := getIDKeyValue(req)
 
 	res, err := elastic.NewDeleteByQueryService(database.ESGetConn()).
 		// for multiple index search query, pass in slice of string
 		Index(strings.Split(req.IndexName, ",")...).
-		Query(elastic.NewBoolQuery().Must(matchQueryArray...)).
+		Query(elastic.NewBoolQuery().
+			Must(
+				elastic.NewMatchQuery(FieldNameCategory, req.BodyJSON.Category),
+				elastic.NewMatchQuery(key, value),
+			)).
 		Do(CreateContext())
 	if err != nil {
-		utils.Warn(fmt.Sprintf("error ESDeleteDocument %v", err))
+		utils.Error(fmt.Sprintf("error ESDeleteDocument %v", err))
 		return err
 	}
-
-	utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v",
-		time.Since(s), res.Deleted))
+	_ = res
+	// utils.Info(fmt.Sprintf("ESDeleteDocument took: %v deleted: %v  [category=%v, %v=%v]",
+	// 	time.Since(s), res.Deleted, req.BodyJSON.Category, key, value))
 	return nil
 }
 
