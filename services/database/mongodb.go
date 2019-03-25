@@ -12,8 +12,8 @@ import (
 	config "github.com/b-eee/amagi/services/configctl"
 
 	utils "github.com/b-eee/amagi"
-	mongodb "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	mongodb "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 var (
