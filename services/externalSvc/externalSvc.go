@@ -59,6 +59,9 @@ var (
 	EnvLogStockerHost = EnvVar{"BEEE_LOGSTOCKER_SERVICE_HOST", "localhost"}
 	// EnvLogStockerPort env name for logstocker port
 	EnvLogStockerPort = EnvVar{"BEEE_LOGSTOCKER_SERVICE_PORT", "2004"}
+
+	// EnvHexaCloudAPIHost hexacloud api host
+	EnvHexaCloudAPIHost = EnvVar{"BEEE_HEXACLOUD", "2007"}
 )
 
 // String return env value or default
