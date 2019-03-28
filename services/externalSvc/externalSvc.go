@@ -61,7 +61,9 @@ var (
 	EnvLogStockerPort = EnvVar{"BEEE_LOGSTOCKER_SERVICE_PORT", "2004"}
 
 	// EnvHexaCloudAPIHost hexacloud api host
-	EnvHexaCloudAPIHost = EnvVar{"BEEE_HEXACLOUD", "2007"}
+	EnvHexaCloudAPIHost = EnvVar{"BEEE_HEXACLOUD_SERVICE_HOST=", "localhost"}
+	// EnvHexaCloudAPIPort hexacloud api host
+	EnvHexaCloudAPIPort = EnvVar{"BEEE_HEXACLOUD_SERVICE_PORT", "2007"}
 )
 
 // String return env value or default
@@ -166,11 +168,7 @@ func APIrequestGetter(credKey, field string, response interface{}) error {
 
 	configURL := fmt.Sprintf("http://%v/get_kv/credential/%v", configCtlURL(), os.Getenv("ENV"))
 
-	if err := HTTPGetRequestWResponse(configURL, v, &response); err != nil {
-		return err
-	}
-
-	return nil
+	return HTTPGetRequestWResponse(configURL, v, &response)
 }
 
 func configCtlURL() string {
