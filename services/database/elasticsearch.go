@@ -45,8 +45,14 @@ func StartElasticSearch() {
 	utils.Info(fmt.Sprintf("connected to elasticsearch... %v", esURL))
 }
 
+// ESClientExists client exists check
+func ESClientExists() bool {
+	return ESConn != nil
+}
+
 // ESGetConn get elasticsearch connection
 func ESGetConn() *elastic.Client {
+	fmt.Println("client %v", ESConn == nil)
 	return ESConn
 }
 

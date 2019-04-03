@@ -150,6 +150,10 @@ func ESCreateIndex(indexName string) error {
 
 // ESAddDocument add document to the index
 func (req *ESSearchReq) ESAddDocument() error {
+	if !database.ESClientExists() {
+		return nil
+	}
+
 	s := time.Now()
 
 	// USE GLOBAL COMMON INDEX !! TODO: Refactor code ,HI
@@ -340,6 +344,10 @@ func ResultHighlighter() *elastic.Highlight {
 
 // ESBulkDeleteDocuments bulk delete elasticsearch document
 func ESBulkDeleteDocuments(requests ...ESSearchReq) error {
+	if !database.ESClientExists() {
+		return nil
+	}
+
 	for _, req := range requests {
 		if err := req.ESDeleteDocument(); err != nil {
 			continue
@@ -351,6 +359,10 @@ func ESBulkDeleteDocuments(requests ...ESSearchReq) error {
 
 // ESBulkAddDocuments bulk delete elasticsearch document
 func ESBulkAddDocuments(requests ...ESSearchReq) error {
+	if !database.ESClientExists() {
+		return nil
+	}
+
 	for _, req := range requests {
 		if err := req.ESAddDocument(); err != nil {
 			utils.Error(fmt.Sprintf("ESAddDocument error %v", err))
