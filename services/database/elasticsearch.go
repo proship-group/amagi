@@ -52,7 +52,7 @@ func ESClientExists() bool {
 
 // ESGetConn get elasticsearch connection
 func ESGetConn() *elastic.Client {
-	fmt.Println("client %v", ESConn == nil)
+	// fmt.Println("client %v", ESConn == nil)
 	return ESConn
 }
 
