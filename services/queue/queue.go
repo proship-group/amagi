@@ -96,6 +96,7 @@ func (item *Queue) Enqueue(callback func(Queue)) error {
 		return fmt.Errorf("Queue item must have ItemExec: %v", item)
 	}
 	var data bytes.Buffer
+	gob.Register(map[string]interface{}{})
 	en := gob.NewEncoder(&data)
 	if err := en.Encode(&item.ItemExec); err != nil {
 		utils.Error(fmt.Sprintf("[Amagi-Queue] error Encoding to GOB: %v", err))
